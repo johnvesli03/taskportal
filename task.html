@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task — Euodoo Task Portal</title>
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body{padding:24px;}
+    .i { display:inline-flex; vertical-align:-3px; }
+    .i svg { width:100%; height:100%; }
+  </style>
+</head>
+<body class="portal-page">
+<script>try{if(localStorage.getItem('euodoo-dark-mode')==='1')document.body.classList.add('dark-mode');if(localStorage.getItem('euodoo-sidebar-collapsed')==='1')document.body.classList.add('sidebar-collapsed');}catch(e){}</script>
+
+
+<div class="portal-shell">
+  <aside class="portal-sidebar">
+    <div class="sidebar-brand-row" style="display:flex;align-items:center;gap:8px;padding:10px 8px 16px;">
+      <img src="assets/logo-mark.png" alt="Euodoo" style="height:26px;" onerror="this.style.display='none'">
+      <span class="sidebar-brand-label" style="color:#f1f2f8;font-weight:700;font-size:.85rem;">Task Portal</span>
+    </div>
+    <nav>
+      <a class="portal-nav-item" href="dashboard.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Dashboard</a>
+      <a class="portal-nav-item" href="projects.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Projects</a>
+      <a class="portal-nav-item" href="tasks.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> My Tasks</a>
+      <a class="portal-nav-item" href="kanban.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/></svg></span> Kanban</a>
+      <a class="portal-nav-item" href="week.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> My Week</a>
+      <a class="portal-nav-item" id="teamLink" href="team.html" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Team</a>
+      <a class="portal-nav-item" id="workloadLink" href="workload.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Workload</a>
+      <a class="portal-nav-item" id="ganttLink" href="gantt.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="7" y1="14" x2="13" y2="14"/></svg></span> Gantt</a>
+      <a class="portal-nav-item" id="templatesLink" href="templates.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></span> Templates</a>
+    </nav>
+    <div class="portal-sidebar-footer">
+      <div class="portal-who portal-clickable" onclick="openAccountModal()">
+        <div class="portal-who-avatar" id="userAvatar">--</div>
+        <div class="portal-who-text">
+          <b id="userName">Loading...</b>
+          <span id="who-designation">—</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="portal-content">
+    <a href="#" id="backLink" class="portal-note portal-clickable" style="display:inline-flex; align-items:center; gap:5px; margin-bottom:14px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</a>
+
+    <div class="portal-project-card" style="margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+        <div>
+          <h1 id="taskTitle" style="font-size:1.3rem;">Loading...</h1>
+          <p class="portal-note" id="taskMeta" style="margin-top:6px;"></p>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span class="status-pill" id="priorityBadge"></span>
+          <span class="status-pill" id="statusBadge"></span>
+          <button class="btn btn-danger" id="deleteTaskBtn" data-admin-only="1" style="display:none; padding:7px 12px; font-size:12px;" onclick="deleteTask()">Delete Task</button>
+        </div>
+      </div>
+      <p id="taskDesc" style="color:var(--ink-soft); font-size:.88rem; line-height:1.6; margin-top:16px;"></p>
+
+      <div style="margin-top:14px; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+        <div id="tagChips"></div>
+        <div id="tagInputWrap" data-admin-only="1" style="display:none; position:relative;">
+          <input type="text" id="tagInput" list="tagOptions" placeholder="+ Add tag" class="input-box" style="width:130px; padding:6px 10px; font-size:.78rem;">
+          <datalist id="tagOptions"></datalist>
+        </div>
+      </div>
+
+      <div style="margin-top:10px; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+        <span class="portal-note" style="font-size:.78rem;">Assignees:</span>
+        <div id="assigneeChips" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+        <button class="btn btn-secondary" id="editAssigneesBtn" data-admin-only="1" style="display:none; padding:5px 10px; font-size:11.5px;" onclick="openAssigneeModal()">Edit</button>
+      </div>
+
+      <div id="dependencyArea" data-admin-only="1" style="display:none; margin-top:12px;"></div>
+
+      <div id="approvalArea" style="margin-top:16px; display:none;"></div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1.3fr 1fr; gap:20px; align-items:flex-start;">
+      <div>
+        <div class="portal-section">
+          <div class="portal-section-head"><h2>Update History</h2></div>
+          <div class="portal-table-wrap" style="padding:14px;">
+            <div id="timeline"><p class="portal-note">Loading updates...</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="portal-section">
+          <div class="portal-section-head"><h2>Checklist</h2></div>
+          <div class="portal-project-card">
+            <div id="subtaskProgress" class="portal-note" style="margin-bottom:10px;"></div>
+            <div id="subtaskList"></div>
+            <form id="subtaskForm" style="display:flex; gap:8px; margin-top:10px;">
+              <input type="text" class="input-box" id="subtaskTitle" placeholder="Add a checklist item..." required>
+              <button type="submit" class="btn btn-secondary" style="white-space:nowrap;">Add</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="portal-section">
+          <div class="portal-section-head"><h2>Attachments</h2></div>
+          <div class="portal-project-card">
+            <div id="attachmentList" style="margin-bottom:10px;"></div>
+            <input type="file" id="attachmentInput" class="input-box">
+            <button class="btn btn-secondary" style="margin-top:8px;" onclick="uploadAttachment()">Upload</button>
+          </div>
+        </div>
+
+        <div class="portal-section">
+          <div class="portal-section-head"><h2>Time Tracking</h2></div>
+          <div class="portal-project-card">
+            <div id="timeSummary" class="portal-note" style="margin-bottom:10px;"></div>
+            <div id="timeEntryList" style="margin-bottom:10px;"></div>
+            <form id="timeForm" style="display:flex; gap:8px;">
+              <input type="number" class="input-box" id="timeHours" min="0.25" step="0.25" placeholder="Hours" style="max-width:100px;" required>
+              <input type="text" class="input-box" id="timeNote" placeholder="What did you work on? (optional)">
+              <button type="submit" class="btn btn-secondary" style="white-space:nowrap;">Log</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="portal-section">
+          <div class="portal-section-head"><h2>Log an Update</h2></div>
+          <div class="portal-project-card">
+            <form id="updateForm">
+              <div class="portal-field">
+                <label>What's changed? <span class="portal-note">(type @Name to mention someone)</span></label>
+                <textarea id="uText" required placeholder="e.g. Finished the API integration, testing now. @Priya can you review?"></textarea>
+              </div>
+              <div class="portal-field">
+                <label>Update status to</label>
+                <select id="uStatus">
+                  <option value="todo">To Do</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="blocked">Blocked</option>
+                  <option value="review">Review</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Post Update</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="portal-section">
+          <div class="portal-section-head"><h2>Add a Comment</h2></div>
+          <div class="portal-project-card">
+            <form id="commentForm">
+              <div class="portal-field">
+                <label>Quick note <span class="portal-note">(doesn't change status)</span></label>
+                <textarea id="cText" required placeholder="e.g. Looks good, thanks! @Ravi heads up."></textarea>
+              </div>
+              <button type="submit" class="btn btn-secondary" style="width:100%; justify-content:center;">Post Comment</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="premium-modal" id="assigneeModal">
+  <div class="premium-modal__backdrop" onclick="closeAssigneeModal()"></div>
+  <div class="premium-modal__dialog">
+    <button class="premium-modal__close" onclick="closeAssigneeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="section-tag">Assignees</div>
+    <h3>Who's working on this?</h3>
+    <div id="assigneeCheckList" style="margin-top:12px; max-height:280px; overflow-y:auto;"></div>
+    <button class="btn btn-primary" style="width:100%; justify-content:center; margin-top:14px;" onclick="saveAssignees()">Save</button>
+  </div>
+</div>
+
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const taskId = params.get('id');
+  let currentProfile = null;
+  let currentTask = null;
+  let teamRoster = [];
+
+  /* ---------- Time tracking ---------- */
+  async function loadTimeEntries() {
+    const { data: entries, error } = await supabaseClient
+      .from('time_entries').select('*, profiles(name)').eq('task_id', taskId).order('created_at', { ascending: false });
+
+    const listEl = document.getElementById('timeEntryList');
+    const sumEl = document.getElementById('timeSummary');
+    if (error) { listEl.innerHTML = ''; sumEl.textContent = 'Could not load time entries.'; return; }
+
+    const total = (entries || []).reduce((sum, e) => sum + Number(e.hours), 0);
+    const est = currentTask.estimated_hours;
+    sumEl.innerHTML = est
+      ? `<b style="color:var(--ink);">${total}h</b> logged of <b style="color:var(--ink);">${est}h</b> estimated ${total > est ? `<span style="color:#b91c1c;">(over by ${(total - est).toFixed(2)}h)</span>` : ''}`
+      : (total ? `<b style="color:var(--ink);">${total}h</b> logged so far (no estimate set)` : 'No time logged yet.');
+
+    listEl.innerHTML = (entries || []).slice(0, 6).map(e => `
+      <div style="display:flex; justify-content:space-between; gap:8px; padding:5px 0; font-size:.8rem; color:var(--ink-soft); border-bottom:1px solid var(--border-rule);">
+        <span>${escapeHtml(e.profiles?.name || 'Someone')}${e.note ? ' — ' + escapeHtml(e.note) : ''}</span>
+        <span style="white-space:nowrap;"><b>${e.hours}h</b> · ${timeAgo(e.created_at)}</span>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('timeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const hours = document.getElementById('timeHours').value;
+    const note = document.getElementById('timeNote').value.trim();
+    const { error } = await supabaseClient.from('time_entries').insert({ task_id: taskId, user_id: currentProfile.id, hours, note: note || null });
+    if (error) { await customAlert('Could not log time: ' + error.message, { title: 'Something went wrong', danger: true }); return; }
+    document.getElementById('timeForm').reset();
+    showToast('success', 'Time logged', `${hours}h added to this task.`);
+    loadTimeEntries();
+  });
+
+  /* ---------- Timeline (updates + comments) ---------- */
+  function renderTimeline(updates) {
+    const el = document.getElementById('timeline');
+    if (!updates || updates.length === 0) {
+      el.innerHTML = `<div class="portal-empty-state"><h3>No history yet</h3><p>Updates will appear here as the team logs progress.</p></div>`;
+      return;
+    }
+    el.innerHTML = updates.map(u => {
+      const isComment = u.kind === 'comment';
+      const mentionedMe = (u.mentions || []).includes(currentProfile.id);
+      const canModerate = isAdmin(currentProfile);
+      return `
+      <div class="portal-timeline-row portal-timeline-row--${isComment ? 'sky' : timelineVariant(u.new_status)}" style="${isComment ? 'opacity:.92;' : ''} ${u.is_system ? 'opacity:.6;' : ''}">
+        <div class="portal-timeline-icon">${isComment ? commentIcon() : timelineIcon(u.new_status)}</div>
+        <div style="flex:1;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <b style="font-size:.86rem;">${escapeHtml(u.profiles?.name || 'Someone')}</b>
+            ${isComment ? '<span class="portal-note">commented</span>' : ''}
+            <span class="portal-note">${timeAgo(u.created_at)}</span>
+            ${mentionedMe ? `<span class="status-pill status-blue" style="font-size:10px;">${icon('bell', 11)} mentioned you</span>` : ''}
+            ${u.is_system ? `<span class="status-pill status-muted" style="font-size:10px;">Hidden from employees</span>` : ''}
+            ${canModerate ? `
+              <button class="portal-icon-btn" style="margin-left:auto;" title="${u.is_system ? 'Show to employees' : 'Hide from employees'}" onclick="toggleLogVisibility('${u.id}', ${!!u.is_system})">
+                ${u.is_system ? icon('eye', 13) : icon('eye-off', 13)}
+              </button>` : ''}
+          </div>
+          <div style="font-size:.84rem; color:var(--ink-soft); margin-top:3px;">${highlightMentions(u.update_text, teamRoster)}</div>
+          ${!isComment && u.old_status && u.new_status && u.old_status !== u.new_status ? `
+            <div style="margin-top:6px; display:flex; align-items:center; gap:6px;">
+              <span class="status-pill ${statusPillClass(u.old_status)}" style="font-size:10.5px;">${statusLabel(u.old_status)}</span>
+              <span class="portal-note">${icon('arrow-right', 11)}</span>
+              <span class="status-pill ${statusPillClass(u.new_status)}" style="font-size:10.5px;">${statusLabel(u.new_status)}</span>
+            </div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function toggleLogVisibility(updateId, currentlyHidden) {
+    if (!isAdmin(currentProfile)) return;
+    const { error } = await supabaseClient.from('task_updates').update({ is_system: !currentlyHidden }).eq('id', updateId);
+    if (error) { showToast('error', 'Could not update', error.message); return; }
+    showToast('success', currentlyHidden ? 'Now visible to employees' : 'Hidden from employees', '');
+    loadUpdates();
+  }
+
+  async function loadUpdates() {
+    const { data: updates, error } = await supabaseClient
+      .from('task_updates')
+      .select('*, profiles(name)')
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: false });
+
+    if (error) { renderTimeline([]); return; }
+    // Employees only see the updates that matter — auto-generated system
+    // entries (task created, moved via Kanban, etc.) are admin-only.
+    const visible = isAdmin(currentProfile) ? (updates || []) : (updates || []).filter(u => !u.is_system);
+    renderTimeline(visible);
+  }
+
+  document.getElementById('updateForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newStatus = document.getElementById('uStatus').value;
+    const text = document.getElementById('uText').value.trim();
+    const oldStatus = currentTask.status;
+    const mentions = extractMentions(text, teamRoster);
+
+    const { data: newUpdate, error: updateErr } = await supabaseClient.from('task_updates').insert({
+      task_id: taskId, user_id: currentProfile.id, kind: 'update',
+      update_text: text, old_status: oldStatus, new_status: newStatus, mentions
+    }).select().single();
+    if (updateErr) { await customAlert('Could not post update: ' + updateErr.message, { title: 'Something went wrong', danger: true }); return; }
+
+    if (newStatus !== oldStatus) {
+      await supabaseClient.from('tasks').update({ status: newStatus }).eq('id', taskId);
+      if (newStatus === 'done') handleRecurrence(currentTask, currentProfile.id);
+      notifyWebhook(`:arrows_counterclockwise: *${currentTask.title}* moved from ${statusLabel(oldStatus)} to ${statusLabel(newStatus)}`);
+    }
+    if (mentions.length) {
+      await supabaseClient.from('notifications').insert(
+        mentions.map(uid => ({ user_id: uid, actor_id: currentProfile.id, task_id: taskId, task_update_id: newUpdate.id }))
+      );
+      showToast('info', 'Mentioned', `${mentions.length} teammate(s) mentioned.`);
+    }
+    showToast('info', 'Update posted', 'Your update was added to the task history.');
+
+    document.getElementById('updateForm').reset();
+    loadTaskAndUpdates();
+  });
+
+  document.getElementById('commentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = document.getElementById('cText').value.trim();
+    const mentions = extractMentions(text, teamRoster);
+
+    const { data: newComment, error } = await supabaseClient.from('task_updates').insert({
+      task_id: taskId, user_id: currentProfile.id, kind: 'comment',
+      update_text: text, old_status: currentTask.status, new_status: currentTask.status, mentions
+    }).select().single();
+    if (error) { await customAlert('Could not post comment: ' + error.message, { title: 'Something went wrong', danger: true }); return; }
+    if (mentions.length) {
+      await supabaseClient.from('notifications').insert(
+        mentions.map(uid => ({ user_id: uid, actor_id: currentProfile.id, task_id: taskId, task_update_id: newComment.id }))
+      );
+    }
+    showToast('info', 'Comment posted', 'Your comment was added.');
+
+    document.getElementById('commentForm').reset();
+    loadUpdates();
+  });
+
+  /* ---------- Subtasks / checklist ---------- */
+  async function loadSubtasks() {
+    const { data: subtasks, error } = await supabaseClient
+      .from('subtasks').select('*').eq('task_id', taskId).order('created_at');
+
+    const listEl = document.getElementById('subtaskList');
+    const progEl = document.getElementById('subtaskProgress');
+    if (error) { listEl.innerHTML = `<p class="portal-note">Could not load checklist.</p>`; progEl.textContent = ''; return; }
+
+    const items = subtasks || [];
+    const done = items.filter(s => s.is_done).length;
+    progEl.textContent = items.length ? `${done} of ${items.length} done` : 'No checklist items yet.';
+
+    listEl.innerHTML = items.map(s => `
+      <div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border-rule);">
+        <input type="checkbox" ${s.is_done ? 'checked' : ''} onchange="toggleSubtask('${s.id}', this.checked)">
+        <span style="font-size:.84rem; flex:1; ${s.is_done ? 'text-decoration:line-through; color:var(--ink-muted);' : ''}">${escapeHtml(s.title)}</span>
+        <button class="portal-icon-btn" onclick="deleteSubtask('${s.id}')" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+    `).join('');
+  }
+
+  async function toggleSubtask(id, checked) {
+    await supabaseClient.from('subtasks').update({ is_done: checked }).eq('id', id);
+    loadSubtasks();
+  }
+  async function deleteSubtask(id) {
+    await supabaseClient.from('subtasks').delete().eq('id', id);
+    loadSubtasks();
+  }
+
+  async function deleteTask() {
+    if (!(await customConfirm(`Delete "${currentTask.title}"? This permanently removes it along with its checklist, comments, history, attachments, and any dependency links. This can't be undone.`, { title: 'Delete task', confirmText: 'Delete', danger: true }))) return;
+
+    const { error } = await supabaseClient.from('tasks').delete().eq('id', taskId);
+    if (error) { showToast('error', 'Could not delete', error.message); return; }
+    showToast('success', 'Task deleted', `"${currentTask.title}" has been removed.`);
+    const dest = currentTask.project ? `project.html?id=${currentTask.project.id}` : 'tasks.html';
+    setTimeout(() => { window.location.href = dest; }, 900);
+  }
+  document.getElementById('subtaskForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('subtaskTitle').value.trim();
+    if (!title) return;
+    const { error } = await supabaseClient.from('subtasks').insert({ task_id: taskId, title, created_by: currentProfile.id });
+    if (error) { await customAlert('Could not add item: ' + error.message, { title: 'Something went wrong', danger: true }); return; }
+    document.getElementById('subtaskForm').reset();
+    loadSubtasks();
+  });
+
+  /* ---------- Tags ---------- */
+  async function loadTags() {
+    const { data: allTags } = await supabaseClient.from('tags').select('*').order('name');
+    document.getElementById('tagOptions').innerHTML = (allTags || []).map(t => `<option value="${escapeHtml(t.name)}">`).join('');
+
+    const { data: taskTags } = await supabaseClient.from('task_tags').select('tag_id, tags(id, name, color)').eq('task_id', taskId);
+    const canEditTags = isAdmin(currentProfile);
+    document.getElementById('tagChips').innerHTML = (taskTags || []).map(tt => `
+      <span class="tag-chip" style="background:${tt.tags.color};">${escapeHtml(tt.tags.name)} ${canEditTags ? `<span class="tag-remove" onclick="removeTag('${tt.tags.id}')">${icon('x', 10)}</span>` : ''}</span>
+    `).join('');
+  }
+
+  async function removeTag(tagId) {
+    if (!isAdmin(currentProfile)) return;
+    await supabaseClient.from('task_tags').delete().eq('task_id', taskId).eq('tag_id', tagId);
+    loadTags();
+  }
+
+  document.getElementById('tagInput').addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const name = e.target.value.trim();
+    if (!name) return;
+    let { data: existing } = await supabaseClient.from('tags').select('*').ilike('name', name).maybeSingle();
+    if (!existing) {
+      const colors = ['#0FB9AE', '#0891b2', '#c026d3', '#F06422', '#16a34a', '#dc2626'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const { data: created, error } = await supabaseClient.from('tags').insert({ name, color }).select().single();
+      if (error) { showToast('error', 'Could not add tag', error.message); return; }
+      existing = created;
+    }
+    await supabaseClient.from('task_tags').insert({ task_id: taskId, tag_id: existing.id }).select();
+    e.target.value = '';
+    loadTags();
+  });
+
+  /* ---------- Multi-assignee ---------- */
+  async function loadAssignees() {
+    const { data: rows } = await supabaseClient.from('task_assignees').select('user_id, profiles(id, name)').eq('task_id', taskId);
+    const assignees = (rows || []).map(r => r.profiles).filter(Boolean);
+    document.getElementById('assigneeChips').innerHTML = assignees.length
+      ? assignees.map(a => `<span class="tag-chip" style="background:var(--primary);">${escapeHtml(a.name)}</span>`).join('')
+      : `<span class="portal-note" style="font-size:.8rem;">Unassigned</span>`;
+    window.__currentAssigneeIds = assignees.map(a => a.id);
+  }
+
+  function openAssigneeModal() {
+    if (!isAdmin(currentProfile)) { showToast('error', 'Admins only', 'Only an admin can change who a task is assigned to.'); return; }
+    const current = window.__currentAssigneeIds || [];
+    document.getElementById('assigneeCheckList').innerHTML = teamRoster.map(p => `
+      <label style="display:flex; align-items:center; gap:8px; padding:7px 4px; font-size:.85rem;">
+        <input type="checkbox" value="${p.id}" ${current.includes(p.id) ? 'checked' : ''}> ${escapeHtml(p.name)}
+      </label>
+    `).join('');
+    document.getElementById('assigneeModal').classList.add('is-open');
+  }
+  function closeAssigneeModal() { document.getElementById('assigneeModal').classList.remove('is-open'); }
+
+  async function saveAssignees() {
+    const checked = Array.from(document.querySelectorAll('#assigneeCheckList input:checked')).map(i => i.value);
+    await supabaseClient.from('task_assignees').delete().eq('task_id', taskId);
+    if (checked.length) await supabaseClient.from('task_assignees').insert(checked.map(uid => ({ task_id: taskId, user_id: uid })));
+    // Keep the legacy single assigned_to in sync with the first assignee, for backward-compatible views
+    await supabaseClient.from('tasks').update({ assigned_to: checked[0] || null }).eq('id', taskId);
+    showToast('success', 'Assignees updated', 'Saved who is working on this task.');
+    closeAssigneeModal();
+    loadAssignees();
+  }
+
+  /* ---------- Dependencies ---------- */
+  async function loadDependencies() {
+    if (!isAdmin(currentProfile)) return; // dependencies are admin-only
+    const { data: deps } = await supabaseClient.from('task_dependencies').select('id, blocking_task_id, tasks!task_dependencies_blocking_task_id_fkey(id, title, status)').eq('task_id', taskId);
+    const area = document.getElementById('dependencyArea');
+    const list = deps || [];
+    const unmet = list.filter(d => d.tasks && d.tasks.status !== 'done');
+    window.__unmetDependencies = unmet.length;
+
+    area.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+        <span class="portal-note" style="font-size:.78rem;">Blocked by</span>
+        <button class="btn btn-secondary" style="padding:5px 10px; font-size:11.5px;" onclick="openDependencyPicker()">+ Add</button>
+      </div>
+    ` + (list.length
+      ? list.map(d => `
+        <div class="dependency-row ${d.tasks && d.tasks.status !== 'done' ? 'is-blocking' : ''}">
+          <span><a href="task.html?id=${d.blocking_task_id}">${escapeHtml(d.tasks ? d.tasks.title : 'Deleted task')}</a> ${d.tasks ? `<span class="status-pill ${statusPillClass(d.tasks.status)}" style="font-size:10px; margin-left:6px;">${statusLabel(d.tasks.status)}</span>` : ''}</span>
+          <button class="portal-icon-btn" onclick="removeDependency('${d.id}')" title="Remove">${icon('x', 12)}</button>
+        </div>`).join('')
+      : `<p class="portal-note" style="font-size:.8rem;">No dependencies — this task can start any time.</p>`);
+  }
+
+  async function removeDependency(id) {
+    await supabaseClient.from('task_dependencies').delete().eq('id', id);
+    loadDependencies();
+  }
+
+  async function openDependencyPicker() {
+    const { data: others } = await supabaseClient.from('tasks').select('id, title').neq('id', taskId).order('title');
+    const title = await customPrompt(
+      'Type the exact title of the task that must finish first:\n\n' + (others || []).map(o => '- ' + o.title).slice(0, 25).join('\n'),
+      '', { title: 'Add a dependency', placeholder: 'Exact task title', okText: 'Add' }
+    );
+    if (!title) return;
+    const match = (others || []).find(o => o.title.toLowerCase() === title.trim().toLowerCase());
+    if (!match) { showToast('error', 'Not found', 'No task with that exact title.'); return; }
+    const { error } = await supabaseClient.from('task_dependencies').insert({ task_id: taskId, blocking_task_id: match.id });
+    if (error) { showToast('error', 'Could not add', error.message); return; }
+    loadDependencies();
+  }
+
+  /* ---------- Attachments ---------- */
+  async function loadAttachments() {
+    const { data: files, error } = await supabaseClient.from('task_attachments').select('*, profiles(name)').eq('task_id', taskId).order('created_at', { ascending: false });
+    const list = document.getElementById('attachmentList');
+    if (error || !files || !files.length) { list.innerHTML = `<p class="portal-note">No files attached yet.</p>`; return; }
+    list.innerHTML = files.map(f => `
+      <div class="attachment-row">
+        ${icon('folder', 14)}
+        <span class="attachment-name">${escapeHtml(f.file_name)}</span>
+        <button class="btn btn-secondary" style="padding:4px 8px; font-size:11px;" onclick="downloadAttachment('${f.storage_path}', '${escapeHtml(f.file_name)}')">Download</button>
+        <button class="portal-icon-btn" onclick="deleteAttachment('${f.id}', '${f.storage_path}')" title="Remove">${icon('x', 12)}</button>
+      </div>
+    `).join('');
+  }
+
+  async function uploadAttachment() {
+    const input = document.getElementById('attachmentInput');
+    const file = input.files[0];
+    if (!file) { showToast('warning', 'No file', 'Choose a file first.'); return; }
+    const path = `${taskId}/${Date.now()}-${file.name}`;
+    const { error: upErr } = await supabaseClient.storage.from('task-attachments').upload(path, file);
+    if (upErr) { showToast('error', 'Upload failed', upErr.message); return; }
+    const { error } = await supabaseClient.from('task_attachments').insert({
+      task_id: taskId, uploaded_by: currentProfile.id, file_name: file.name, storage_path: path, file_size: file.size, content_type: file.type
+    });
+    if (error) { showToast('error', 'Could not save', error.message); return; }
+    input.value = '';
+    showToast('success', 'Uploaded', `${file.name} attached to this task.`);
+    loadAttachments();
+  }
+
+  async function downloadAttachment(path, name) {
+    const { data, error } = await supabaseClient.storage.from('task-attachments').createSignedUrl(path, 60);
+    if (error) { showToast('error', 'Could not open file', error.message); return; }
+    const a = document.createElement('a'); a.href = data.signedUrl; a.download = name; a.target = '_blank'; document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  async function deleteAttachment(id, path) {
+    if (!(await customConfirm('Remove this attachment?', { confirmText: 'Remove', danger: true }))) return;
+    await supabaseClient.storage.from('task-attachments').remove([path]);
+    await supabaseClient.from('task_attachments').delete().eq('id', id);
+    loadAttachments();
+  }
+
+  /* ---------- Approval workflow ---------- */
+  function renderApprovalArea() {
+    const area = document.getElementById('approvalArea');
+    const isOwner = currentTask.assigned_to === currentProfile.id || currentTask.created_by === currentProfile.id;
+
+    if (currentTask.status === 'pending_approval') {
+      if (isAdmin(currentProfile)) {
+        area.style.display = 'block';
+        area.innerHTML = `
+          <div style="background:#fefce8; border:1px solid #fde68a; border-radius:10px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <span style="font-size:.84rem; color:#854d0e; display:flex; align-items:center; gap:6px;">${icon('flag', 14)} Closure requested — review and approve or send it back.</span>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-secondary" style="padding:7px 14px; font-size:12.5px;" onclick="rejectClose()">Reject</button>
+              <button class="btn btn-primary" style="padding:7px 14px; font-size:12.5px;" onclick="approveClose()">Approve &amp; Close</button>
+            </div>
+          </div>`;
+      } else if (isOwner) {
+        area.style.display = 'block';
+        area.innerHTML = `<div class="portal-note" style="background:#fefce8; border:1px solid #fde68a; border-radius:10px; padding:12px 14px; color:#854d0e; display:flex; align-items:center; gap:6px;">${icon('flag', 14)} Waiting on admin approval to close this task.</div>`;
+      } else {
+        area.style.display = 'none';
+      }
+    } else if (isOwner && !isAdmin(currentProfile) && currentTask.status !== 'done') {
+      area.style.display = 'block';
+      area.innerHTML = `<button class="btn btn-secondary" onclick="requestClose()">${icon('check', 14)} Request to Close</button>`;
+    } else {
+      area.style.display = 'none';
+    }
+  }
+
+  async function requestClose() {
+    if (window.__unmetDependencies > 0 && !(await customConfirm(`This task still has ${window.__unmetDependencies} unfinished dependency task(s). Request closure anyway?`, { confirmText: 'Request anyway', danger: true }))) return;
+    if (!(window.__unmetDependencies > 0) && !(await customConfirm('Send this task to an admin for closure approval?', { confirmText: 'Send request' }))) return;
+    await supabaseClient.from('tasks').update({ status: 'pending_approval', status_before_approval: currentTask.status }).eq('id', taskId);
+    await supabaseClient.from('task_updates').insert({
+      task_id: taskId, user_id: currentProfile.id, kind: 'update',
+      update_text: 'Requested closure — waiting on admin approval', old_status: currentTask.status, new_status: 'pending_approval'
+    });
+    showToast('info', 'Requested', 'Closure request sent to admin.');
+    loadTaskAndUpdates();
+  }
+
+  async function approveClose() {
+    await supabaseClient.from('tasks').update({ status: 'done' }).eq('id', taskId);
+    await supabaseClient.from('task_updates').insert({
+      task_id: taskId, user_id: currentProfile.id, kind: 'update',
+      update_text: 'Approved and closed the task', old_status: 'pending_approval', new_status: 'done'
+    });
+    handleRecurrence(currentTask, currentProfile.id);
+    showToast('success', 'Approved', 'Task closed.');
+    loadTaskAndUpdates();
+  }
+
+  async function rejectClose() {
+    const back = currentTask.status_before_approval || 'review';
+    await supabaseClient.from('tasks').update({ status: back }).eq('id', taskId);
+    await supabaseClient.from('task_updates').insert({
+      task_id: taskId, user_id: currentProfile.id, kind: 'update',
+      update_text: 'Rejected the closure request — sent back for more work', old_status: 'pending_approval', new_status: back
+    });
+    showToast('warning', 'Rejected', 'Sent back to the assignee.');
+    loadTaskAndUpdates();
+  }
+
+  /* ---------- Load task ---------- */
+  async function loadTaskAndUpdates() {
+    const { data: task, error } = await supabaseClient
+      .from('tasks')
+      .select('*, project:projects(id, name), assignee:profiles!tasks_assigned_to_fkey(name), creator:profiles!tasks_created_by_fkey(name)')
+      .eq('id', taskId)
+      .single();
+
+    if (error || !task) {
+      document.getElementById('taskTitle').textContent = "Task not found or you don't have access";
+      return;
+    }
+    currentTask = task;
+
+    document.getElementById('taskTitle').textContent = task.title;
+    document.getElementById('taskDesc').textContent = task.description || 'No description provided.';
+    document.getElementById('taskMeta').innerHTML =
+      escapeHtml(task.project ? `In project: ${task.project.name}` : 'Standalone task') +
+      escapeHtml(task.assignee ? ` · Assigned to ${task.assignee.name}` : ' · Unassigned') +
+      (task.estimated_hours ? escapeHtml(` · Est. ${task.estimated_hours}h`) : '') +
+      (task.due_date ? ' · ' + dueDateLabel(task.due_date, task.status) : '');
+
+    const pBadge = document.getElementById('priorityBadge');
+    pBadge.textContent = task.priority; pBadge.className = `status-pill ${priorityPillClassUrgent(task.priority, task.due_date, task.status)}`;
+    const sBadge = document.getElementById('statusBadge');
+    sBadge.textContent = statusLabel(task.status); sBadge.className = `status-pill ${statusPillClass(task.status)}`;
+
+    document.getElementById('uStatus').value = task.status === 'pending_approval' ? 'review' : task.status;
+
+    document.getElementById('backLink').href = task.project ? `project.html?id=${task.project.id}` : 'tasks.html';
+    document.getElementById('backLink').innerHTML = task.project
+      ? `${icon('arrow-left', 13)} Back to ${escapeHtml(task.project.name)}`
+      : `${icon('arrow-left', 13)} Back to Tasks`;
+
+    renderApprovalArea();
+    loadUpdates();
+    loadSubtasks();
+    loadTimeEntries();
+    loadTags();
+    loadAssignees();
+    loadDependencies();
+    loadAttachments();
+  }
+
+  (async () => {
+    const auth = await requireAuth();
+    if (!auth) return;
+    currentProfile = auth.profile;
+
+    document.getElementById('userAvatar').textContent = initials(currentProfile.name);
+    document.getElementById('userName').textContent = currentProfile.name;
+    if (isAdmin(currentProfile)) document.getElementById('teamLink').style.display = 'flex';
+
+    const { data: people } = await supabaseClient.from('profiles').select('id, name').order('name');
+    teamRoster = people || [];
+    attachMentionAutocomplete(document.getElementById('uText'), teamRoster);
+    attachMentionAutocomplete(document.getElementById('cText'), teamRoster);
+
+    if (!taskId) { window.location.href = 'tasks.html'; return; }
+    loadTaskAndUpdates();
+  })();
+</script>
+</body>
+</html>

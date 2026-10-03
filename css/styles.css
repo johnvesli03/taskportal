@@ -1,0 +1,293 @@
+/* ================================================================
+   EUODOO — BASE DESIGN TOKENS
+   Brand colors sampled directly from the Euodoo Technologies logo:
+   teal #0FB9AE / #0B686D, orange #F06422, navy #222074.
+   ================================================================ */
+:root {
+  /* brand — sampled from the Euodoo Technologies logo. Orange is the
+     lead brand color (buttons, links, active states, focus rings) —
+     matching the Employee Portal's orange CTA. Teal is the secondary
+     accent (badges, highlights). */
+  --primary: #F06422;       /* logo's orange — main action color */
+  --primary-dark: #C8500F;  /* darker orange for hover states */
+  --accent-teal: #0FB9AE;   /* logo's bright teal — secondary accent */
+  --accent-teal-dark: #0B686D;
+  --gold: #eab308;          /* kept as a separate semantic color for "pending approval" status only */
+
+  /* ink / text */
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --ink-muted: #64748b;
+
+  /* surfaces */
+  --surface: #ffffff;
+  --border-rule: #e5e7eb;
+  --border-strong: #d5d8e0;
+  --sidebar-bg: #1a1852; /* deep navy blended from the logo's wordmark navy #222074 */
+  --n-bg-subtle: #f8f9fb; /* neutral subtle fill — search input, track bars, kanban columns */
+
+  --radius: 12px;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --font-display: 'Sora', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: #f8f9fb;
+}
+
+h1, h2, h3, h4 { font-family: var(--font-display); margin: 0; letter-spacing: -0.01em; }
+a { color: inherit; text-decoration: none; }
+button { font-family: var(--font-body); cursor: pointer; }
+p { margin: 0; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  border: none; border-radius: 8px;
+  padding: 10px 18px; font-size: 13.5px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--border-rule); }
+.btn-secondary:hover { background: var(--n-bg-hover, #f5f5f7); }
+
+/* ---------- Section tag / eyebrow ---------- */
+.section-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--primary);
+}
+
+/* ---------- Inputs ---------- */
+label { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); display: block; margin-bottom: 6px; }
+.input-box, textarea, select {
+  width: 100%; padding: 11px 13px; border-radius: 8px;
+  background: #fafbfc; border: 1px solid var(--border-rule);
+  color: var(--ink); font-size: 14px; font-family: var(--font-body);
+}
+.input-box:focus, textarea:focus, select:focus {
+  outline: none; border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(240, 100, 34, 0.10);
+}
+textarea { resize: vertical; min-height: 70px; }
+.portal-field { margin-bottom: 16px; }
+.field-row { display: flex; gap: 12px; }
+.field-row .portal-field { flex: 1; }
+
+/* ---------- Status pills (base) ---------- */
+.status-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+  text-transform: capitalize; border: 1px solid transparent;
+}
+.status-green { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+.status-blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+
+/* ---------- Premium modal ---------- */
+.premium-modal {
+  position: fixed; inset: 0; z-index: 100;
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.premium-modal.is-open { display: flex; }
+.premium-modal__backdrop {
+  position: absolute; inset: 0; background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(2px);
+}
+.premium-modal__dialog {
+  position: relative; background: var(--surface); border-radius: var(--r-xl, 16px);
+  padding: 30px; width: min(460px, calc(100% - 32px)); max-height: calc(100vh - 48px); overflow-y: auto;
+  box-shadow: var(--shadow-xl, 0 10px 34px rgba(15,23,42,0.14));
+}
+.premium-modal__close {
+  position: absolute; top: 12px; right: 12px; width: 30px; height: 30px;
+  border: none; background: var(--n-bg-subtle, #f8f9fb); border-radius: 8px; color: var(--ink-soft); font-size: 16px;
+}
+.premium-modal__actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+
+/* ---------- Custom confirm / alert / prompt dialogs ----------
+   Replaces the browser's native confirm()/alert()/prompt() —
+   those render as unstyleable OS chrome, so every "Are you sure?"
+   in the app now uses this instead. Built on .premium-modal. */
+.confirm-dialog { animation: confirmDialogFadeIn .15s ease-out; }
+.confirm-dialog.is-leaving { animation: confirmDialogFadeOut .15s ease-in forwards; }
+.confirm-dialog__box {
+  width: min(380px, calc(100% - 32px));
+  padding: 26px 26px 22px;
+  animation: confirmDialogPopIn .18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.confirm-dialog.is-leaving .confirm-dialog__box { animation: confirmDialogPopOut .15s ease-in forwards; }
+.confirm-dialog__title { margin: 0 0 8px; font-size: 1.05rem; font-family: var(--font-display); color: var(--ink); }
+.confirm-dialog__msg { margin: 0; color: var(--ink-soft); font-size: .88rem; line-height: 1.55; white-space: pre-line; max-height: 240px; overflow-y: auto; }
+.confirm-dialog__input { margin-top: 14px; width: 100%; }
+.confirm-dialog--error .confirm-dialog__box { border-top: 3px solid #ef4444; }
+
+@keyframes confirmDialogFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes confirmDialogFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes confirmDialogPopIn { from { opacity: 0; transform: scale(.94) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes confirmDialogPopOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.96); } }
+
+/* ---------- Misc ---------- */
+.portal-empty-state { text-align: center; padding: 60px 20px; color: var(--ink-muted); }
+.portal-empty-state h3 { color: var(--ink-soft); font-size: 15px; margin-bottom: 6px; }
+
+/* urgent priority — not in original portal supplemental file, added for this app */
+.priority-urgent { background: #450a0a; color: #fecaca; border: 1px solid #7f1d1d; }
+
+/* urgency escalation — pulses a badge when a due date is today/tomorrow/overdue */
+.status-pill.is-urgent {
+  animation: portalPulse 1.6s ease-in-out infinite;
+  box-shadow: 0 0 0 1px currentColor inset;
+}
+
+/* status-gold has an animation in portal.css but no base color — adding one here */
+.status-gold { background: #fefce8; color: #854d0e; border: 1px solid #fde68a; }
+
+/* bulk-action bar + kanban + week-view utility classes */
+.bulk-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 14px;
+}
+.kanban-board { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+.kanban-col { background: var(--n-bg-subtle, #f8f9fb); border: 1px solid var(--border-rule); border-radius: 12px; min-width: 240px; flex: 1; padding: 10px; }
+.kanban-col-head { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-muted); padding: 4px 6px 10px; display:flex; justify-content:space-between; }
+.kanban-card {
+  background: var(--surface); border: 1px solid var(--border-rule); border-radius: 8px;
+  padding: 10px 12px; margin-bottom: 8px; cursor: grab; font-size: .82rem;
+}
+.kanban-card:active { cursor: grabbing; }
+.kanban-col.drag-over { background: #eef2ff; border-color: var(--primary); }
+.week-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; }
+.week-day { background: var(--surface); border: 1px solid var(--border-rule); border-radius: 10px; min-width: 190px; flex: 1; padding: 12px; }
+.week-day.is-today { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+.week-day-head { font-size: .78rem; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.week-task { font-size: .78rem; padding: 7px 8px; border-radius: 6px; background: var(--n-bg-subtle, #f8f9fb); margin-bottom: 6px; }
+
+/* ================================================================
+   PHASE 2 — role badges, dark mode, global search, workload,
+   tags, gantt/timeline, templates, mobile responsiveness
+   ================================================================ */
+
+/* ---------- Role badges (Admin vs Employee) ---------- */
+.role-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  padding: 2px 8px; border-radius: 999px;
+}
+.role-badge--admin { background: rgba(240,100,34,0.14); color: var(--primary); }
+.role-badge--member { background: rgba(15,185,174,0.12); color: var(--accent-teal); }
+
+/* ---------- Top bar (search + dark mode toggle) ---------- */
+.topbar-icon-btn {
+  transition: border-color .15s;
+}
+.topbar-icon-btn:hover { border-color: var(--border-strong); }
+#globalSearchResults a:hover, #globalSearchResults > div:hover { background: #f1f2f8; }
+
+/* Push page content down so the fixed search bar / bell / dark-mode
+   toggle never overlap the page heading underneath them. */
+body.has-global-topbar { padding-top: 78px; }
+@media (max-width: 900px) {
+  body.has-global-topbar { padding-top: 24px; }
+}
+
+/* ---------- Dark mode ---------- */
+body.dark-mode {
+  --ink: #eef1f8;
+  --ink-soft: #b7bedb;
+  --ink-muted: #8b91b8;
+  --surface: #171b33;
+  --border-rule: #2b3057;
+  --border-strong: #3a3f6e;
+  --n-bg-subtle: #1c2044; /* keeps search input, workload/gantt tracks, dependency rows dark */
+  background: #0f1226;
+}
+body.dark-mode .portal-sidebar { background: #0d1024; }
+body.dark-mode .input-box,
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select { background: #1c2044; color: var(--ink); border-color: var(--border-rule); }
+body.dark-mode .portal-table-wrap,
+body.dark-mode .kanban-col,
+body.dark-mode .week-task,
+body.dark-mode .week-day { background: #1a1e3d; }
+body.dark-mode .status-gold { background: #3a3212; color: #f3d374; border-color: #5c4c14; }
+body.dark-mode #darkModeBtn svg { fill: #f3d374; stroke: #f3d374; }
+
+/* ---------- Tags ---------- */
+.tag-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .7rem; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  margin: 2px 4px 2px 0; color: #fff;
+}
+.tag-chip .tag-remove { cursor: pointer; opacity: .75; }
+.tag-chip .tag-remove:hover { opacity: 1; }
+
+/* ---------- Dependencies ---------- */
+.dependency-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border-radius: 8px; background: var(--n-bg-subtle, #f8f9fb);
+  border: 1px solid var(--border-rule); margin-bottom: 6px; font-size: .82rem;
+}
+.dependency-row.is-blocking { border-color: #fbbf24; background: #fffbeb; }
+
+/* ---------- Attachments ---------- */
+.attachment-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-rule);
+  margin-bottom: 6px; font-size: .82rem;
+}
+.attachment-row .attachment-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Workload view ---------- */
+.workload-row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--border-rule); }
+.workload-name { width: 160px; flex-shrink: 0; font-size: .84rem; font-weight: 600; }
+.workload-bar-track { flex: 1; height: 10px; border-radius: 999px; background: var(--n-bg-subtle, #eef0f5); overflow: hidden; }
+.workload-bar-fill { height: 100%; background: var(--grad, linear-gradient(90deg, var(--primary), var(--accent-teal))); border-radius: 999px; }
+.workload-count { width: 60px; text-align: right; font-size: .8rem; font-weight: 700; color: var(--ink-soft); flex-shrink: 0; }
+
+/* ---------- Gantt / timeline view ---------- */
+.gantt-wrap { overflow-x: auto; }
+.gantt-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.gantt-label { width: 180px; flex-shrink: 0; font-size: .8rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gantt-track { position: relative; flex: 1; height: 22px; background: var(--n-bg-subtle, #f1f2f8); border-radius: 6px; min-width: 500px; }
+.gantt-bar { position: absolute; top: 2px; height: 18px; border-radius: 5px; background: var(--primary); }
+.gantt-bar.is-done { background: #16a34a; }
+.gantt-bar.is-overdue { background: #ef4444; }
+.gantt-header { display: flex; gap: 10px; padding: 0 0 6px; }
+.gantt-header .gantt-label { visibility: hidden; }
+
+/* ---------- Templates ---------- */
+.template-card { border: 1px solid var(--border-rule); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+.template-item-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: .82rem; }
+
+/* ---------- Mobile responsiveness pass ---------- */
+@media (max-width: 900px) {
+  #globalSearchWrap { display: none; }
+  #darkModeBtn { top: 12px; right: 12px; }
+  #logoutBtn { top: 12px; right: 58px; }
+  #notifBell { top: 12px; right: 104px; }
+  .portal-shell { flex-direction: column; }
+  .portal-sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px 12px; }
+  .portal-sidebar nav { display: flex; flex-wrap: wrap; gap: 4px; }
+  .portal-sidebar-footer { margin-left: auto; }
+  .portal-content { padding: 16px; }
+  .grid-3, .grid-2, .portal-stats-grid { grid-template-columns: 1fr !important; }
+  .field-row { flex-direction: column; }
+  .portal-table-wrap { overflow-x: auto; }
+  .portal-table { min-width: 560px; }
+  .workload-name { width: 100px; }
+  .gantt-label { width: 100px; }
+}
+@media (max-width: 560px) {
+  .kanban-board { flex-direction: column; }
+  .kanban-col { min-width: 100%; }
+  .week-strip { flex-direction: column; }
+  .week-day { min-width: 100%; }
+}

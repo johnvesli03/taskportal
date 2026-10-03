@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team — Euodoo Task Portal</title>
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>body{padding:24px;}</style>
+</head>
+<body class="portal-page">
+<script>try{if(localStorage.getItem('euodoo-dark-mode')==='1')document.body.classList.add('dark-mode');if(localStorage.getItem('euodoo-sidebar-collapsed')==='1')document.body.classList.add('sidebar-collapsed');}catch(e){}</script>
+
+
+<div class="portal-shell">
+  <aside class="portal-sidebar">
+    <div class="sidebar-brand-row" style="display:flex;align-items:center;gap:8px;padding:10px 8px 16px;">
+      <img src="assets/logo-mark.png" alt="Euodoo" style="height:26px;" onerror="this.style.display='none'">
+      <span class="sidebar-brand-label" style="color:#f1f2f8;font-weight:700;font-size:.85rem;">Task Portal</span>
+    </div>
+    <nav>
+      <a class="portal-nav-item" href="dashboard.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Dashboard</a>
+      <a class="portal-nav-item" href="projects.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Projects</a>
+      <a class="portal-nav-item" href="tasks.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> My Tasks</a>
+      <a class="portal-nav-item" href="kanban.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/></svg></span> Kanban</a>
+      <a class="portal-nav-item" href="week.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> My Week</a>
+      <a class="portal-nav-item active" href="team.html" data-admin-only="1"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Team</a>
+      <a class="portal-nav-item" id="workloadLink" href="workload.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Workload</a>
+      <a class="portal-nav-item" id="ganttLink" href="gantt.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="7" y1="14" x2="13" y2="14"/></svg></span> Gantt</a>
+      <a class="portal-nav-item" id="templatesLink" href="templates.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></span> Templates</a>
+    </nav>
+    <div class="portal-sidebar-footer">
+      <div class="portal-who portal-clickable" onclick="openAccountModal()">
+        <div class="portal-who-avatar" id="userAvatar">--</div>
+        <div class="portal-who-text">
+          <b id="userName">Loading...</b>
+          <span id="who-designation">—</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="portal-content">
+    <div class="portal-topline">
+      <div>
+        <div class="portal-page-title">Team</div>
+        <div class="portal-page-sub">Everyone with access to the portal. Admins see and manage all tasks; members see their own.</div>
+      </div>
+      <button class="btn btn-primary" onclick="openAddUserModal()">+ Add Person</button>
+    </div>
+    <div class="portal-table-wrap" style="padding:6px;">
+      <div id="teamList" style="padding:10px;"><p class="portal-note">Loading team...</p></div>
+    </div>
+
+    <div class="portal-section">
+      <div class="portal-section-head"><h2>Slack / Webhook Notifications</h2></div>
+      <div class="portal-project-card">
+        <p class="portal-note" style="margin-bottom:10px;">Paste an incoming webhook URL (Slack, Teams, or any endpoint that accepts a JSON <code>{"text": "..."}</code> payload) to get pinged on new tasks and status changes.</p>
+        <div class="field-row">
+          <div class="portal-field" style="flex:1;">
+            <label>Webhook URL</label>
+            <input type="text" class="input-box" id="webhookUrl" placeholder="https://hooks.slack.com/services/...">
+          </div>
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; font-size:.84rem; margin-bottom:10px;"><input type="checkbox" id="webhookActive"> Enabled</label>
+        <button class="btn btn-primary" onclick="saveWebhook()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="premium-modal" id="addUserModal">
+  <div class="premium-modal__backdrop" onclick="closeAddUserModal()"></div>
+  <div class="premium-modal__dialog">
+    <button class="premium-modal__close" onclick="closeAddUserModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="section-tag">New Person</div>
+    <h3>Add Someone to the Portal</h3>
+    <p class="portal-note" style="margin:8px 0 18px;">This creates their login directly — no need to use the Supabase dashboard. They'll sign in with the Employee ID and password you set here (not their email).</p>
+
+    <div class="portal-error" id="addUserError" style="display:none;"></div>
+
+    <form id="addUserForm">
+      <div class="portal-field">
+        <label>Full Name</label>
+        <input type="text" class="input-box" id="newUserName" required placeholder="e.g. Priya Sharma">
+      </div>
+      <div class="portal-field">
+        <label>Employee ID</label>
+        <input type="text" class="input-box" id="newUserEmployeeId" required placeholder="e.g. ET003">
+        <span class="portal-note" style="font-size:.76rem;">This is what they'll type to sign in — not their email.</span>
+      </div>
+      <div class="portal-field">
+        <label>Email</label>
+        <input type="email" class="input-box" id="newUserEmail" required placeholder="priya@euodootech.com">
+        <span class="portal-note" style="font-size:.76rem;">Used for password resets and notifications — they won't log in with it directly.</span>
+      </div>
+      <div class="portal-field">
+        <label>Temporary Password</label>
+        <input type="text" class="input-box" id="newUserPassword" required minlength="6" placeholder="At least 6 characters">
+        <span class="portal-note" style="font-size:.76rem;">Share this with them — they can change it later from their Account menu.</span>
+      </div>
+      <div class="portal-field">
+        <label>Role</label>
+        <select class="input-box" id="newUserRole">
+          <option value="member" selected>Employee</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" id="addUserSubmitBtn">Add Person</button>
+    </form>
+  </div>
+</div>
+
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  let currentProfile = null;
+
+  function openAddUserModal() {
+    document.getElementById('addUserForm').reset();
+    document.getElementById('addUserError').style.display = 'none';
+    document.getElementById('addUserModal').classList.add('is-open');
+  }
+  function closeAddUserModal() { document.getElementById('addUserModal').classList.remove('is-open'); }
+
+  document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById('addUserError');
+    errorBox.style.display = 'none';
+    const btn = document.getElementById('addUserSubmitBtn');
+    btn.textContent = 'Creating...';
+
+    const name = document.getElementById('newUserName').value.trim();
+    const employeeId = document.getElementById('newUserEmployeeId').value.trim();
+    const email = document.getElementById('newUserEmail').value.trim();
+    const password = document.getElementById('newUserPassword').value;
+    const role = document.getElementById('newUserRole').value;
+
+    try {
+      // Sign up on a SEPARATE, isolated Supabase client (its own storage key)
+      // so this doesn't touch or replace the admin's own logged-in session.
+      const signupClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { storageKey: 'euodoo-temp-signup', persistSession: false }
+      });
+      const { data, error } = await signupClient.auth.signUp({
+        email, password,
+        options: { data: { name } }
+      });
+      if (error) throw error;
+      if (!data.user) throw new Error('Could not create the account — please try again.');
+
+      // Set their Employee ID (what they'll actually type to sign in), and
+      // promote to Admin if that was selected. The profile row itself was
+      // auto-created by the on-signup trigger with role="member" by default.
+      const patch = { employee_id: employeeId };
+      if (role === 'admin') patch.role = 'admin';
+      const { error: patchErr } = await supabaseClient.from('profiles').update(patch).eq('id', data.user.id);
+      if (patchErr) throw new Error('Account created, but could not finish setup: ' + patchErr.message);
+
+      const needsConfirmation = !data.session;
+      showToast('success', 'Person added', needsConfirmation
+        ? `${name} was created — if email confirmation is on for this project, they'll need to confirm via a link sent to ${email} before signing in with ID ${employeeId}.`
+        : `${name} can sign in now with Employee ID ${employeeId} and the password you set.`, { duration: 6000 });
+
+      closeAddUserModal();
+      loadTeam();
+    } catch (err) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = err.message || 'Something went wrong.';
+    } finally {
+      btn.textContent = 'Add Person';
+    }
+  });
+
+  async function toggleRole(id, currentRole) {
+    const newRole = currentRole === 'admin' ? 'member' : 'admin';
+    if (!confirm(`Change this person's role to "${newRole}"?`)) return;
+    const { error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', id);
+    if (error) { alert('Could not update role: ' + error.message); return; }
+    loadTeam();
+  }
+
+  async function editEmployeeId(id, currentId) {
+    const next = prompt('Employee ID for sign-in (e.g. ET003):', currentId || '');
+    if (next === null) return;
+    const trimmed = next.trim();
+    if (!trimmed) { alert('Employee ID can\'t be empty — they need it to sign in.'); return; }
+    const { error } = await supabaseClient.from('profiles').update({ employee_id: trimmed }).eq('id', id);
+    if (error) {
+      alert(/duplicate|unique/i.test(error.message) ? 'That Employee ID is already in use by someone else.' : 'Could not update: ' + error.message);
+      return;
+    }
+    showToast('success', 'Saved', `Employee ID set to ${trimmed}.`);
+    loadTeam();
+  }
+
+  async function loadTeam() {
+    const { data: people, error } = await supabaseClient.from('profiles').select('*').order('created_at');
+    const list = document.getElementById('teamList');
+    if (error) { list.innerHTML = `<p class="portal-note">Could not load team.</p>`; return; }
+
+    list.innerHTML = `<table class="portal-table"><tbody>` + (people || []).map(p => `
+      <tr>
+        <td style="width:1%;"><div class="portal-who-avatar" style="background:var(--primary);">${initials(p.name)}</div></td>
+        <td>
+          <div class="portal-cell-stack">
+            <b style="font-size:.88rem;">${escapeHtml(p.name)} ${p.id === currentProfile.id ? '<span class="portal-note" style="font-weight:400;">(you)</span>' : ''}</b>
+            <small>${escapeHtml(p.email)}</small>
+          </div>
+        </td>
+        <td style="white-space:nowrap;">
+          ${p.employee_id
+            ? `<span class="id-chip">${escapeHtml(p.employee_id)}</span>`
+            : `<span class="id-chip is-missing">No ID set</span>`}
+          <button class="portal-icon-btn" title="Edit Employee ID" onclick="editEmployeeId('${p.id}', ${p.employee_id ? `'${escapeHtml(p.employee_id).replace(/'/g,"\\'")}'` : 'null'})">${icon('edit', 12)}</button>
+        </td>
+        <td style="text-align:right; white-space:nowrap;">
+          <span class="status-pill ${p.role === 'admin' ? 'status-blue' : 'status-muted'}">${p.role}</span>
+          ${p.id !== currentProfile.id ? `<button class="btn btn-secondary" style="padding:6px 12px; font-size:12px; margin-left:8px;" onclick="toggleRole('${p.id}', '${p.role}')">Make ${p.role === 'admin' ? 'Member' : 'Admin'}</button>` : ''}
+        </td>
+      </tr>
+    `).join('') + `</tbody></table>`;
+  }
+
+  async function saveWebhook() {
+    const webhook_url = document.getElementById('webhookUrl').value.trim();
+    const is_active = document.getElementById('webhookActive').checked;
+    const { data: existing } = await supabaseClient.from('webhook_settings').select('id').limit(1).maybeSingle();
+    if (existing) {
+      await supabaseClient.from('webhook_settings').update({ webhook_url, is_active }).eq('id', existing.id);
+    } else if (webhook_url) {
+      await supabaseClient.from('webhook_settings').insert({ webhook_url, is_active, created_by: currentProfile.id });
+    }
+    showToast('success', 'Saved', 'Webhook settings updated.');
+  }
+
+  async function loadWebhook() {
+    const { data } = await supabaseClient.from('webhook_settings').select('*').limit(1).maybeSingle();
+    if (data) {
+      document.getElementById('webhookUrl').value = data.webhook_url || '';
+      document.getElementById('webhookActive').checked = !!data.is_active;
+    }
+  }
+
+  (async () => {
+    const auth = await requireAuth();
+    if (!auth) return;
+    currentProfile = auth.profile;
+
+    document.getElementById('userAvatar').textContent = initials(currentProfile.name);
+    document.getElementById('userName').textContent = currentProfile.name;
+
+    if (!isAdmin(currentProfile)) { window.location.href = 'dashboard.html'; return; }
+
+    loadTeam();
+    loadWebhook();
+  })();
+</script>
+</body>
+</html>

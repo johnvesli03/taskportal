@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Week — Euodoo Task Portal</title>
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>body{padding:24px;}</style>
+</head>
+<body class="portal-page">
+<script>try{if(localStorage.getItem('euodoo-dark-mode')==='1')document.body.classList.add('dark-mode');if(localStorage.getItem('euodoo-sidebar-collapsed')==='1')document.body.classList.add('sidebar-collapsed');}catch(e){}</script>
+
+
+<div class="portal-shell">
+  <aside class="portal-sidebar">
+    <div class="sidebar-brand-row" style="display:flex;align-items:center;gap:8px;padding:10px 8px 16px;">
+      <img src="assets/logo-mark.png" alt="Euodoo" style="height:26px;" onerror="this.style.display='none'">
+      <span class="sidebar-brand-label" style="color:#f1f2f8;font-weight:700;font-size:.85rem;">Task Portal</span>
+    </div>
+    <nav>
+      <a class="portal-nav-item" href="dashboard.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Dashboard</a>
+      <a class="portal-nav-item" href="projects.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Projects</a>
+      <a class="portal-nav-item" href="tasks.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> My Tasks</a>
+      <a class="portal-nav-item" href="kanban.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/></svg></span> Kanban</a>
+      <a class="portal-nav-item active" href="week.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> My Week</a>
+      <a class="portal-nav-item" id="teamLink" href="team.html" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Team</a>
+      <a class="portal-nav-item" id="workloadLink" href="workload.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Workload</a>
+      <a class="portal-nav-item" id="ganttLink" href="gantt.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="7" y1="14" x2="13" y2="14"/></svg></span> Gantt</a>
+      <a class="portal-nav-item" id="templatesLink" href="templates.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></span> Templates</a>
+    </nav>
+    <div class="portal-sidebar-footer">
+      <div class="portal-who portal-clickable" onclick="openAccountModal()">
+        <div class="portal-who-avatar" id="userAvatar">--</div>
+        <div class="portal-who-text">
+          <b id="userName">Loading...</b>
+          <span id="who-designation">—</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="portal-content">
+    <div class="portal-topline">
+      <div>
+        <div class="portal-page-title">My Week</div>
+        <div class="portal-page-sub">What's due, day by day. Overdue items are called out first.</div>
+      </div>
+    </div>
+
+    <div class="portal-section" id="overdueSection" style="display:none;">
+      <div class="portal-section-head"><h2 style="display:flex; align-items:center; gap:6px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Overdue</h2></div>
+      <div class="portal-table-wrap" style="padding:10px;" id="overdueList"></div>
+    </div>
+
+    <div class="week-strip" id="weekStrip">
+      <p class="portal-note">Loading your week...</p>
+    </div>
+  </div>
+</div>
+
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  let currentProfile = null;
+
+  function taskChip(t) {
+    return `<a href="task.html?id=${t.id}" class="week-task portal-clickable" style="display:block;">
+      <b style="font-size:.8rem;">${escapeHtml(t.title)}</b>
+      <div style="margin-top:4px;"><span class="status-pill ${statusPillClass(t.status)}" style="font-size:10px;">${statusLabel(t.status)}</span></div>
+    </a>`;
+  }
+
+  async function loadWeek() {
+    let query = supabaseClient
+      .from('tasks')
+      .select('*, project:projects(name)')
+      .not('due_date', 'is', null)
+      .neq('status', 'done')
+      .order('due_date');
+    if (!isAdmin(currentProfile)) query = query.or(`assigned_to.eq.${currentProfile.id},created_by.eq.${currentProfile.id}`);
+
+    const { data: tasks, error } = await query;
+    if (error) { document.getElementById('weekStrip').innerHTML = `<p class="portal-note">Could not load tasks.</p>`; return; }
+
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const overdue = (tasks || []).filter(t => new Date(t.due_date + 'T00:00:00') < today);
+    const upcoming = (tasks || []).filter(t => new Date(t.due_date + 'T00:00:00') >= today);
+
+    const overdueSection = document.getElementById('overdueSection');
+    if (overdue.length > 0) {
+      overdueSection.style.display = 'block';
+      document.getElementById('overdueList').innerHTML = overdue.map(t => `
+        <div style="padding:8px 4px;">${taskChip(t)}</div>
+      `).join('');
+    }
+
+    const strip = document.getElementById('weekStrip');
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      days.push(d);
+    }
+
+    strip.innerHTML = days.map(d => {
+      const iso = d.toISOString().split('T')[0];
+      const dayTasks = upcoming.filter(t => t.due_date === iso);
+      const isToday = i0(d, today);
+      return `
+        <div class="week-day ${isToday ? 'is-today' : ''}">
+          <div class="week-day-head">${d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}${isToday ? ' · Today' : ''}</div>
+          ${dayTasks.length ? dayTasks.map(taskChip).join('') : '<p class="portal-note" style="font-size:11px;">Nothing due</p>'}
+        </div>`;
+    }).join('');
+  }
+
+  function i0(a, b) { return a.getTime() === b.getTime(); }
+
+  (async () => {
+    const auth = await requireAuth();
+    if (!auth) return;
+    currentProfile = auth.profile;
+
+    document.getElementById('userAvatar').textContent = initials(currentProfile.name);
+    document.getElementById('userName').textContent = currentProfile.name;
+    if (isAdmin(currentProfile)) document.getElementById('teamLink').style.display = 'flex';
+
+    loadWeek();
+  })();
+</script>
+</body>
+</html>

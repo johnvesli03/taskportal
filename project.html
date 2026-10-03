@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project — Euodoo Task Portal</title>
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>body{padding:24px;}</style>
+</head>
+<body class="portal-page">
+<script>try{if(localStorage.getItem('euodoo-dark-mode')==='1')document.body.classList.add('dark-mode');if(localStorage.getItem('euodoo-sidebar-collapsed')==='1')document.body.classList.add('sidebar-collapsed');}catch(e){}</script>
+
+
+<div class="portal-shell">
+  <aside class="portal-sidebar">
+    <div class="sidebar-brand-row" style="display:flex;align-items:center;gap:8px;padding:10px 8px 16px;">
+      <img src="assets/logo-mark.png" alt="Euodoo" style="height:26px;" onerror="this.style.display='none'">
+      <span class="sidebar-brand-label" style="color:#f1f2f8;font-weight:700;font-size:.85rem;">Task Portal</span>
+    </div>
+    <nav>
+      <a class="portal-nav-item" href="dashboard.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Dashboard</a>
+      <a class="portal-nav-item active" href="projects.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Projects</a>
+      <a class="portal-nav-item" href="tasks.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> My Tasks</a>
+      <a class="portal-nav-item" href="kanban.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/></svg></span> Kanban</a>
+      <a class="portal-nav-item" href="week.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> My Week</a>
+      <a class="portal-nav-item" id="teamLink" href="team.html" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Team</a>
+      <a class="portal-nav-item" id="workloadLink" href="workload.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Workload</a>
+      <a class="portal-nav-item" id="ganttLink" href="gantt.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="7" y1="14" x2="13" y2="14"/></svg></span> Gantt</a>
+      <a class="portal-nav-item" id="templatesLink" href="templates.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></span> Templates</a>
+    </nav>
+    <div class="portal-sidebar-footer">
+      <div class="portal-who portal-clickable" onclick="openAccountModal()">
+        <div class="portal-who-avatar" id="userAvatar">--</div>
+        <div class="portal-who-text">
+          <b id="userName">Loading...</b>
+          <span id="who-designation">—</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="portal-content">
+    <a href="projects.html" class="portal-note portal-clickable" style="display:inline-flex; align-items:center; gap:5px; margin-bottom:14px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> All Projects</a>
+    <div class="portal-topline">
+      <div>
+        <div class="portal-page-title" id="projectName">Loading...</div>
+        <div class="portal-page-sub" id="projectDesc"></div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-secondary" onclick="exportProjectTasksCSV()">Export CSV</button>
+        <button class="btn btn-primary" id="newTaskBtn" data-admin-only="1" style="display:none;" onclick="openModal()">+ Add Task</button>
+        <button class="btn btn-danger" id="deleteProjectBtn" data-admin-only="1" style="display:none;" onclick="deleteProject()">Delete Project</button>
+      </div>
+    </div>
+
+    <div class="portal-project-card" style="margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px; flex-wrap:wrap;">
+        <b style="font-size:.9rem;">Progress</b>
+        <span class="portal-note" id="progressSummary"></span>
+      </div>
+      <div style="height:10px; border-radius:6px; background:var(--n-bg-subtle, #f8f9fb); overflow:hidden;">
+        <div id="progressBar" style="height:100%; width:0%; background:var(--primary); transition:width .3s ease;"></div>
+      </div>
+    </div>
+
+    <div class="portal-section">
+      <div class="portal-section-head">
+        <h2>Stages</h2>
+        <div id="shareControls"></div>
+      </div>
+      <div class="portal-table-wrap" style="padding:10px;">
+        <div id="stagesList"><p class="portal-note">Loading stages...</p></div>
+        <form id="stageForm" style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+          <input type="text" class="input-box" id="stageName" placeholder="Add a stage (e.g. Design, Development, Testing)..." style="flex:1; min-width:200px;">
+          <input type="date" class="input-box" id="stageDue" style="max-width:160px;" title="Target date (optional)">
+          <button type="submit" class="btn btn-secondary" style="white-space:nowrap;">Add Stage</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="portal-section" id="feedbackSection" style="display:none;">
+      <div class="portal-section-head"><h2>Client Feedback</h2></div>
+      <div class="portal-table-wrap" style="padding:10px;">
+        <div id="feedbackList"><p class="portal-note">Loading feedback...</p></div>
+      </div>
+    </div>
+
+    <div class="portal-table-wrap" style="padding:6px;">
+      <div id="tasksList" style="padding:10px;"><p class="portal-note">Loading tasks...</p></div>
+    </div>
+
+    <div class="portal-section">
+      <div class="portal-section-head"><h2>Project Activity</h2></div>
+      <div class="portal-table-wrap" style="padding:14px;">
+        <div id="activityLog"><p class="portal-note">Loading activity...</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="premium-modal" id="modalBackdrop">
+  <div class="premium-modal__backdrop" onclick="closeModal()"></div>
+  <div class="premium-modal__dialog">
+    <button class="premium-modal__close" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="section-tag">New Task</div>
+    <h3>Add Task to Project</h3>
+    <form id="taskForm">
+      <div class="portal-field">
+        <label>Task Title</label>
+        <input type="text" class="input-box" id="tTitle" required placeholder="e.g. Design homepage hero section">
+      </div>
+      <div class="portal-field">
+        <label>Description</label>
+        <textarea id="tDesc" placeholder="Details, acceptance criteria, links..."></textarea>
+      </div>
+      <div class="field-row">
+        <div class="portal-field">
+          <label>Priority</label>
+          <select id="tPriority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div class="portal-field">
+          <label>Due Date</label>
+          <input type="date" class="input-box" id="tDue">
+        </div>
+      </div>
+      <div class="portal-field">
+        <label>Estimated Hours <span class="portal-note">(optional)</span></label>
+        <input type="number" class="input-box" id="tEstHours" min="0" step="0.5" placeholder="e.g. 6">
+      </div>
+      <div class="portal-field">
+        <label>Assign To</label>
+        <select id="tAssignee"><option value="">Unassigned</option></select>
+      </div>
+      <div class="premium-modal__actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Task</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="premium-modal" id="shareModalBackdrop">
+  <div class="premium-modal__backdrop" onclick="closeShareModal()"></div>
+  <div class="premium-modal__dialog">
+    <button class="premium-modal__close" onclick="closeShareModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="section-tag">Client Link</div>
+    <h3>Share Progress with Client</h3>
+    <p style="font-size:.86rem; color:var(--ink-soft); line-height:1.6; margin-bottom:16px;">Anyone with this link can see the overall progress percentage and stage status — no login needed. Task titles, comments, and team names are never shown.</p>
+    <div class="portal-field">
+      <label>Shareable Link</label>
+      <input type="text" class="input-box" id="shareLinkInput" readonly>
+    </div>
+    <div class="portal-divider"></div>
+    <div class="portal-field">
+      <label>Custom Logo URL <span class="portal-note">(optional — overrides Euodoo logo on this client's page)</span></label>
+      <input type="text" class="input-box" id="clientLogoUrl" placeholder="https://client-domain.com/logo.png">
+    </div>
+    <div class="portal-field">
+      <label>Brand Color <span class="portal-note">(optional)</span></label>
+      <input type="color" class="input-box" id="clientBrandColor" style="height:42px; padding:4px;">
+    </div>
+    <button class="btn btn-secondary" style="width:100%; justify-content:center; margin-bottom:6px;" onclick="saveBranding()">Save Branding</button>
+    <div class="premium-modal__actions" style="justify-content:space-between;">
+      <button class="btn btn-outline-danger" onclick="disableShare()">Disable Link</button>
+      <button class="btn btn-primary" onclick="copyShareLink()">Copy Link</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const projectId = params.get('id');
+  let currentProfile = null;
+  let currentProject = null;
+
+  function openModal() { document.getElementById('modalBackdrop').classList.add('is-open'); }
+  function closeModal() { document.getElementById('modalBackdrop').classList.remove('is-open'); }
+  function openShareModal() { document.getElementById('shareModalBackdrop').classList.add('is-open'); }
+  function closeShareModal() { document.getElementById('shareModalBackdrop').classList.remove('is-open'); }
+
+  function copyShareLink() {
+    const input = document.getElementById('shareLinkInput');
+    input.select();
+    navigator.clipboard?.writeText(input.value);
+    showToast('success', 'Copied', 'Link copied to clipboard.');
+  }
+
+  async function enableShare() {
+    const { data, error } = await supabaseClient.from('projects').update({ share_enabled: true }).eq('id', projectId).select().single();
+    if (error) { showToast('error', 'Could not share', error.message); return; }
+    currentProject = data;
+    showShareLink();
+    renderShareControls();
+  }
+
+  async function disableShare() {
+    const { error } = await supabaseClient.from('projects').update({ share_enabled: false }).eq('id', projectId);
+    if (error) { showToast('error', 'Could not update', error.message); return; }
+    currentProject.share_enabled = false;
+    closeShareModal();
+    showToast('info', 'Link disabled', 'The client link no longer works.');
+    renderShareControls();
+  }
+
+  function showShareLink() {
+    const url = `${window.location.origin}${window.location.pathname.replace('project.html', 'client-view.html')}?id=${projectId}&token=${currentProject.share_token}`;
+    document.getElementById('shareLinkInput').value = url;
+    document.getElementById('clientLogoUrl').value = currentProject.client_logo_url || '';
+    document.getElementById('clientBrandColor').value = currentProject.client_brand_color || '#0FB9AE';
+    openShareModal();
+  }
+
+  async function saveBranding() {
+    const logo = document.getElementById('clientLogoUrl').value.trim() || null;
+    const color = document.getElementById('clientBrandColor').value || null;
+    const { error } = await supabaseClient.from('projects').update({ client_logo_url: logo, client_brand_color: color }).eq('id', projectId);
+    if (error) { showToast('error', 'Could not save', error.message); return; }
+    currentProject.client_logo_url = logo;
+    currentProject.client_brand_color = color;
+    showToast('success', 'Branding saved', "The client link will reflect this on next load.");
+  }
+
+  function renderShareControls() {
+    const el = document.getElementById('shareControls');
+    if (!isAdmin(currentProfile)) { el.innerHTML = ''; return; }
+    if (currentProject && currentProject.share_enabled) {
+      el.innerHTML = `<button class="btn btn-secondary" style="padding:6px 12px; font-size:12.5px;" onclick="showShareLink()">View Client Link</button>`;
+    } else {
+      el.innerHTML = `<button class="btn btn-secondary" style="padding:6px 12px; font-size:12.5px;" onclick="enableShare()">Share with Client</button>`;
+    }
+  }
+
+  /* ---------- Stages ---------- */
+  async function loadStages() {
+    const { data: stages, error } = await supabaseClient
+      .from('project_stages').select('*').eq('project_id', projectId).order('position');
+    const list = document.getElementById('stagesList');
+    const form = document.getElementById('stageForm');
+    form.style.display = isAdmin(currentProfile) ? 'flex' : 'none';
+
+    if (error) { list.innerHTML = `<p class="portal-note">Could not load stages.</p>`; return; }
+    if (!stages || stages.length === 0) {
+      list.innerHTML = `<p class="portal-note" style="padding:8px 4px;">No stages defined yet${isAdmin(currentProfile) ? ' — add the first one below.' : '.'}</p>`;
+      return;
+    }
+    list.innerHTML = stages.map((s, i) => `
+      <div style="display:flex; align-items:center; gap:10px; padding:8px 4px; flex-wrap:wrap; ${i < stages.length - 1 ? 'border-bottom:1px solid var(--border-rule);' : ''}">
+        <span class="portal-note" style="width:18px;">${i + 1}.</span>
+        <span style="flex:1; font-size:.86rem; min-width:120px;">${escapeHtml(s.name)}</span>
+        ${s.due_date ? `<span class="portal-note" style="font-size:11.5px;">${dueDateLabel(s.due_date, s.status)}</span>` : ''}
+        ${isAdmin(currentProfile) ? `
+          <input type="date" value="${s.due_date || ''}" onchange="updateStageDue('${s.id}', this.value)" style="width:auto; padding:5px 8px; font-size:12px;" title="Target date">
+          <select onchange="updateStageStatus('${s.id}', this.value)" style="width:auto; padding:5px 8px; font-size:12px;">
+            <option value="pending" ${s.status === 'pending' ? 'selected' : ''}>Pending</option>
+            <option value="in_progress" ${s.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+            <option value="done" ${s.status === 'done' ? 'selected' : ''}>Done</option>
+          </select>
+          <button class="portal-icon-btn" onclick="deleteStage('${s.id}')" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        ` : `<span class="status-pill ${statusPillClass(s.status === 'done' ? 'done' : s.status === 'in_progress' ? 'in_progress' : 'todo')}">${statusLabel(s.status)}</span>`}
+      </div>
+    `).join('');
+  }
+
+  async function updateStageDue(id, dueDate) {
+    await supabaseClient.from('project_stages').update({ due_date: dueDate || null }).eq('id', id);
+    loadStages();
+  }
+
+  async function updateStageStatus(id, status) {
+    await supabaseClient.from('project_stages').update({ status }).eq('id', id);
+    showToast('info', 'Stage updated', 'Client-facing progress will reflect this.');
+  }
+
+  async function deleteStage(id) {
+    if (!(await customConfirm('Remove this stage?', { confirmText: 'Remove', danger: true }))) return;
+    await supabaseClient.from('project_stages').delete().eq('id', id);
+    loadStages();
+  }
+
+  async function deleteProject() {
+    const { count } = await supabaseClient.from('tasks').select('id', { count: 'exact', head: true }).eq('project_id', projectId);
+    const taskWarning = count
+      ? ` It has ${count} task${count === 1 ? '' : 's'} — they will NOT be deleted, but will become standalone tasks with no project.`
+      : '';
+    if (!(await customConfirm(`Delete "${currentProject.name}"? This can't be undone.${taskWarning}`, { title: 'Delete project', confirmText: 'Delete', danger: true }))) return;
+
+    const { error } = await supabaseClient.from('projects').delete().eq('id', projectId);
+    if (error) { showToast('error', 'Could not delete', error.message); return; }
+    showToast('success', 'Project deleted', `"${currentProject.name}" has been removed.`);
+    setTimeout(() => { window.location.href = 'projects.html'; }, 900);
+  }
+
+  document.getElementById('stageForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('stageName').value.trim();
+    const due = document.getElementById('stageDue').value || null;
+    if (!name) return;
+    const { count } = await supabaseClient.from('project_stages').select('id', { count: 'exact', head: true }).eq('project_id', projectId);
+    const { error } = await supabaseClient.from('project_stages').insert({ project_id: projectId, name, due_date: due, position: count || 0 });
+    if (error) { await customAlert('Could not add stage: ' + error.message, { title: 'Something went wrong', danger: true }); return; }
+    document.getElementById('stageName').value = '';
+    document.getElementById('stageDue').value = '';
+    loadStages();
+  });
+
+  /* ---------- Client feedback ---------- */
+  async function loadFeedback() {
+    if (!isAdmin(currentProfile)) return;
+    document.getElementById('feedbackSection').style.display = 'block';
+    const { data, error } = await supabaseClient
+      .from('client_feedback').select('*').eq('project_id', projectId).order('created_at', { ascending: false });
+    const list = document.getElementById('feedbackList');
+    if (error) { list.innerHTML = `<p class="portal-note">Could not load feedback.</p>`; return; }
+    if (!data || data.length === 0) { list.innerHTML = `<p class="portal-note" style="padding:6px 4px;">No client feedback yet.</p>`; return; }
+    list.innerHTML = data.map(f => `
+      <div style="padding:10px 4px; border-bottom:1px solid var(--border-rule); display:flex; gap:10px; align-items:flex-start;">
+        <span class="status-pill ${f.status === 'open' ? 'status-halfday' : 'status-green'}" style="flex-shrink:0;">${f.status === 'open' ? 'Open' : 'Resolved'}</span>
+        <div style="flex:1;">
+          <div style="font-size:.86rem; color:var(--ink-soft);">${escapeHtml(f.message)}</div>
+          <div class="portal-note" style="font-size:11px; margin-top:3px;">${timeAgo(f.created_at)}</div>
+        </div>
+        ${f.status === 'open' ? `<button class="btn btn-secondary" style="padding:5px 10px; font-size:11.5px; flex-shrink:0;" onclick="resolveFeedback('${f.id}')">Mark Resolved</button>` : ''}
+      </div>
+    `).join('');
+  }
+
+  async function resolveFeedback(id) {
+    await supabaseClient.from('client_feedback').update({ status: 'resolved' }).eq('id', id);
+    loadFeedback();
+  }
+
+  /* ---------- Project-wide activity log ---------- */
+  async function loadActivityLog() {
+    const { data: updates, error } = await supabaseClient
+      .from('task_updates')
+      .select('id, update_text, kind, new_status, created_at, tasks!inner(title, project_id), profiles(name)')
+      .eq('tasks.project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    const el = document.getElementById('activityLog');
+    if (error) { el.innerHTML = `<p class="portal-note">Could not load activity.</p>`; return; }
+    if (!updates || updates.length === 0) { el.innerHTML = `<p class="portal-note">No activity logged yet on this project.</p>`; return; }
+    el.innerHTML = updates.map(u => `
+      <div class="portal-timeline-row portal-timeline-row--${u.kind === 'comment' ? 'sky' : timelineVariant(u.new_status)}">
+        <div class="portal-timeline-icon">${u.kind === 'comment' ? commentIcon() : timelineIcon(u.new_status)}</div>
+        <div>
+          <div style="font-size:.84rem;"><b>${escapeHtml(u.profiles?.name || 'Someone')}</b> on ${escapeHtml(u.tasks?.title || 'a task')}
+            <span class="portal-note" style="margin-left:6px;">${timeAgo(u.created_at)}</span>
+          </div>
+          <div style="font-size:.82rem; color:var(--ink-soft); margin-top:3px;">${escapeHtml(u.update_text)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function loadTeamIntoSelect() {
+    const { data: people } = await supabaseClient.from('profiles').select('id, name').order('name');
+    const select = document.getElementById('tAssignee');
+    (people || []).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id; opt.textContent = p.name;
+      select.appendChild(opt);
+    });
+  }
+
+  function renderTasks(tasks) {
+    const list = document.getElementById('tasksList');
+    if (!tasks || tasks.length === 0) {
+      list.innerHTML = `<div class="portal-empty-state"><h3>No tasks yet</h3><p>Add the first task to get this project moving.</p></div>`;
+      return;
+    }
+    list.innerHTML = `<table class="portal-table"><tbody>` + tasks.map(t => `
+      <tr class="portal-clickable" onclick="window.location='task.html?id=${t.id}'">
+        <td>
+          <div class="portal-cell-stack">
+            <b style="font-size:.88rem;">${escapeHtml(t.title)}</b>
+            <small>${t.assignee ? 'Assigned to ' + escapeHtml(t.assignee.name) : 'Unassigned'} ${t.due_date ? '· ' + dueDateLabel(t.due_date, t.status) : ''}</small>
+          </div>
+        </td>
+        <td style="text-align:right; white-space:nowrap;">
+          <span class="status-pill ${priorityPillClassUrgent(t.priority, t.due_date, t.status)}">${t.priority}</span>
+          <span class="status-pill ${statusPillClass(t.status)}">${statusLabel(t.status)}</span>
+        </td>
+      </tr>
+    `).join('') + `</tbody></table>`;
+  }
+
+  async function loadTasks() {
+    const { data: tasks, error } = await supabaseClient
+      .from('tasks')
+      .select('*, assignee:profiles!tasks_assigned_to_fkey(name)')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      document.getElementById('tasksList').innerHTML = `<p class="portal-note">You may not have visibility into tasks on this project yet.</p>`;
+      return;
+    }
+    renderTasks(tasks);
+    window.__projectTasks = tasks || [];
+
+    const total = (tasks || []).length;
+    const done = (tasks || []).filter(t => t.status === 'done').length;
+    const percent = total ? Math.round((done / total) * 100) : 0;
+    document.getElementById('progressBar').style.width = percent + '%';
+    document.getElementById('progressSummary').textContent = total
+      ? `${percent}% complete · ${done} of ${total} tasks done · ${total - done} pending`
+      : 'No tasks yet';
+  }
+
+  function exportProjectTasksCSV() {
+    exportCSV('project-tasks.csv', (window.__projectTasks || []).map(t => ({
+      title: t.title, status: t.status, priority: t.priority,
+      assignee: t.assignee?.name || '', due_date: t.due_date || '', estimated_hours: t.estimated_hours || ''
+    })));
+  }
+
+  document.getElementById('taskForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { data: newTask, error } = await supabaseClient.from('tasks').insert({
+      project_id: projectId,
+      title: document.getElementById('tTitle').value.trim(),
+      description: document.getElementById('tDesc').value.trim(),
+      priority: document.getElementById('tPriority').value,
+      due_date: document.getElementById('tDue').value || null,
+      estimated_hours: document.getElementById('tEstHours').value || null,
+      assigned_to: document.getElementById('tAssignee').value || null,
+      created_by: currentProfile.id
+    }).select().single();
+
+    if (error) { await customAlert('Could not add task: ' + error.message, { title: 'Something went wrong', danger: true }); return; }
+
+    await supabaseClient.from('task_updates').insert({
+      task_id: newTask.id, user_id: currentProfile.id,
+      update_text: 'Task created', old_status: null, new_status: 'todo', is_system: true
+    });
+    notifyWebhook(`:new: New task created: *${newTask.title}*`);
+
+    closeModal();
+    document.getElementById('taskForm').reset();
+    loadTasks();
+  });
+
+  (async () => {
+    const auth = await requireAuth();
+    if (!auth) return;
+    currentProfile = auth.profile;
+
+    document.getElementById('tDue').min = todayISO();
+    document.getElementById('stageDue').min = todayISO();
+
+    document.getElementById('userAvatar').textContent = initials(currentProfile.name);
+    document.getElementById('userName').textContent = currentProfile.name;
+    if (isAdmin(currentProfile)) document.getElementById('teamLink').style.display = 'flex';
+
+    if (!projectId) { window.location.href = 'projects.html'; return; }
+
+    const { data: project, error } = await supabaseClient.from('projects').select('*').eq('id', projectId).single();
+    if (error || !project) { window.location.href = 'projects.html'; return; }
+    currentProject = project;
+
+    document.getElementById('projectName').textContent = project.name;
+    document.getElementById('projectDesc').textContent = project.description || 'No description yet.';
+
+    renderShareControls();
+    loadTeamIntoSelect();
+    loadTasks();
+    loadStages();
+    loadFeedback();
+    loadActivityLog();
+  })();
+</script>
+</body>
+</html>

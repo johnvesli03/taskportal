@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Progress — Euodoo Technologies</title>
+    <link rel="icon" type="image/png" href="assets/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/portal.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { padding: 40px 20px; }
+        .wrap { max-width: 620px; margin: 0 auto; }
+        .brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; justify-content: center; }
+        .ring-wrap { display: flex; justify-content: center; margin: 20px 0 26px; }
+        .stage-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--border-rule); }
+        .stage-row:last-child { border-bottom: none; }
+        .stage-dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    </style>
+</head>
+<body class="portal-page">
+
+<div class="wrap" id="pdfArea">
+    <div class="brand-row" id="brandRow">
+        <img src="assets/logo.png" alt="Euodoo Technologies" style="height:46px;" onerror="this.style.display='none'">
+        <span style="font-family:'Sora',sans-serif; font-weight:700; font-size:.95rem; color:var(--ink);">Euodoo Technologies</span>
+    </div>
+
+    <div id="content">
+        <div class="portal-project-card" style="text-align:center;">
+            <p class="portal-note">Loading progress...</p>
+        </div>
+    </div>
+</div>
+
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get('id');
+    const token = params.get('token');
+    let currentProgress = null;
+
+    function ring(percent) {
+      const r = 54, c = 2 * Math.PI * r;
+      const offset = c - (percent / 100) * c;
+      return `
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="${r}" fill="none" stroke="var(--n-bg-subtle, #f0f0f5)" stroke-width="12"/>
+          <circle cx="70" cy="70" r="${r}" fill="none" stroke="var(--primary)" stroke-width="12"
+            stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"
+            transform="rotate(-90 70 70)"/>
+          <text x="70" y="66" text-anchor="middle" font-family="Sora, sans-serif" font-size="26" font-weight="700" fill="var(--ink)">${percent}%</text>
+          <text x="70" y="86" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="var(--ink-muted)">complete</text>
+        </svg>`;
+    }
+
+    function stageDot(status) {
+      if (status === 'done') return `<div class="stage-dot" style="background:#f0fdf4; color:#16a34a;">${icon('check', 13)}</div>`;
+      if (status === 'in_progress') return `<div class="stage-dot" style="background:#eff6ff; color:#2563eb;">${icon('clock', 13)}</div>`;
+      return `<div class="stage-dot" style="background:var(--n-bg-subtle, #f0f0f5); color:var(--ink-muted);">${icon('dot', 9)}</div>`;
+    }
+
+    function submitFeedback(event) {
+      event.preventDefault();
+      const text = document.getElementById('feedbackText').value.trim();
+      if (!text) return;
+      supabaseClient.from('client_feedback').insert({ project_id: projectId, message: text }).then(({ error }) => {
+        const box = document.getElementById('feedbackBox');
+        if (error) {
+          box.innerHTML = `<p class="portal-note">Could not send your note. Please try again or contact the team directly.</p>`;
+          return;
+        }
+        box.innerHTML = `<p style="color:#16a34a; font-size:.86rem; font-weight:600;">Thanks — your note has been sent to the team.</p>`;
+      });
+    }
+
+    function downloadPdf() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const p = currentProgress;
+      let y = 20;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+      doc.text('Euodoo Technologies — Project Progress', 14, y); y += 10;
+      doc.setFontSize(13); doc.text(p.name, 14, y); y += 8;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+      if (p.description) { doc.text(doc.splitTextToSize(p.description, 180), 14, y); y += 12; }
+      doc.setFontSize(11);
+      doc.text(`Overall progress: ${p.percent_complete}% complete`, 14, y); y += 7;
+      doc.text(`Tasks: ${p.done_tasks} done, ${p.pending_tasks} pending`, 14, y); y += 7;
+      if (p.estimated_hours_total > 0) { doc.text(`Hours: ${p.actual_hours_total} logged of ${p.estimated_hours_total} estimated`, 14, y); y += 7; }
+      y += 5;
+      doc.setFont('helvetica', 'bold'); doc.text('Stages', 14, y); y += 7;
+      doc.setFont('helvetica', 'normal');
+      (window.__stages || []).forEach(s => {
+        doc.text(`- ${s.name}  [${s.status.replace('_',' ')}]${s.due_date ? '  target: ' + s.due_date : ''}`, 16, y);
+        y += 6;
+      });
+      y += 4;
+      doc.setFontSize(9); doc.setTextColor(140);
+      doc.text(`Generated ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`, 14, y);
+      doc.save(`${p.name.replace(/[^a-z0-9]/gi, '-')}-progress.pdf`);
+    }
+
+    async function load() {
+      const content = document.getElementById('content');
+
+      if (!token) {
+        content.innerHTML = `<div class="portal-project-card" style="text-align:center;"><h3>Link incomplete</h3><p class="portal-note">This link is missing required information.</p></div>`;
+        return;
+      }
+
+      // Token-gated RPC — only ever returns the single project matching
+      // this exact token, never a listable/queryable table or view.
+      const { data: rows, error } = await supabaseClient.rpc('get_shared_project', { p_token: token });
+      const progress = (rows || [])[0];
+
+      if (error || !progress) {
+        content.innerHTML = `<div class="portal-project-card" style="text-align:center;"><h3>Link unavailable</h3><p class="portal-note">This progress link is invalid or has been disabled by the team.</p></div>`;
+        return;
+      }
+      currentProgress = progress;
+
+      // Custom branding, if the team set any
+      if (progress.client_brand_color) {
+        document.body.style.setProperty('--primary', progress.client_brand_color);
+      }
+      if (progress.client_logo_url) {
+        document.getElementById('brandRow').innerHTML = `<img src="${progress.client_logo_url.replace(/"/g,'')}" alt="${escapeHtml(progress.name)}" style="height:30px;">`;
+      }
+
+      const { data: stages } = await supabaseClient.rpc('get_shared_project_stages', { p_token: token });
+      window.__stages = (stages || []).sort((a, b) => (a.position || 0) - (b.position || 0));
+
+      content.innerHTML = `
+        <div class="portal-project-card">
+          <h1 style="font-size:1.3rem; text-align:center;">${escapeHtml(progress.name)}</h1>
+          ${progress.description ? `<p class="portal-note" style="text-align:center; margin-top:6px;">${escapeHtml(progress.description)}</p>` : ''}
+          <div class="ring-wrap">${ring(progress.percent_complete)}</div>
+          <div class="portal-stats-grid" style="grid-template-columns:repeat(2,1fr);">
+            <div class="portal-stat-card" style="text-align:center;">
+              <div class="portal-stat-value" style="color:#16a34a;">${progress.done_tasks}</div>
+              <div class="portal-stat-label">Completed</div>
+            </div>
+            <div class="portal-stat-card" style="text-align:center;">
+              <div class="portal-stat-value">${progress.pending_tasks}</div>
+              <div class="portal-stat-label">Pending</div>
+            </div>
+          </div>
+          ${progress.estimated_hours_total > 0 ? `<p class="portal-note" style="text-align:center; margin-top:12px;">${progress.actual_hours_total}h logged of ${progress.estimated_hours_total}h estimated</p>` : ''}
+          <button class="btn btn-secondary" style="width:100%; justify-content:center; margin-top:14px;" onclick="downloadPdf()">Download as PDF</button>
+        </div>
+
+        <div class="portal-section">
+          <div class="portal-section-head"><h2>Stages${stages && stages.length ? ` (${stages.length})` : ''}</h2></div>
+          <div class="portal-table-wrap" style="padding:8px 14px;">
+            ${stages && stages.length ? stages.map(s => `
+              <div class="stage-row">
+                ${stageDot(s.status)}
+                <span style="flex:1; font-size:.88rem;">
+                  ${escapeHtml(s.name)}
+                  ${s.due_date ? `<div class="portal-note" style="font-size:11px; margin-top:2px;">${dueDateLabel(s.due_date, s.status)}</div>` : ''}
+                </span>
+                <span class="status-pill ${s.status === 'done' ? 'status-green' : s.status === 'in_progress' ? 'status-blue' : 'status-muted'}">${statusLabel(s.status)}</span>
+              </div>
+            `).join('') : `<p class="portal-note" style="padding:10px 0;">The team hasn't defined stages for this project yet.</p>`}
+          </div>
+        </div>
+
+        <div class="portal-section" id="feedbackBox">
+          <div class="portal-section-head"><h2>Have feedback?</h2></div>
+          <div class="portal-project-card">
+            <form onsubmit="submitFeedback(event)">
+              <div class="portal-field">
+                <label>Let the team know if something needs a change</label>
+                <textarea id="feedbackText" placeholder="e.g. Can we adjust the homepage layout once design is ready?" required></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Send to Team</button>
+            </form>
+          </div>
+        </div>
+
+        <p class="portal-note" style="text-align:center; margin-top:20px;">Progress updates automatically as the Euodoo team completes work. Refresh this page any time for the latest status.</p>
+      `;
+    }
+
+    load();
+</script>
+</body>
+</html>
