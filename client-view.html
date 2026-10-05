@@ -4,35 +4,175 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Progress — Euodoo Technologies</title>
-    <link rel="icon" type="image/png" href="assets/logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/portal.css">
+    <link rel="icon" type="image/png" href="assets/logo.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        body { padding: 40px 20px; }
-        .wrap { max-width: 620px; margin: 0 auto; }
-        .brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; justify-content: center; }
-        .ring-wrap { display: flex; justify-content: center; margin: 20px 0 26px; }
-        .stage-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--border-rule); }
-        .stage-row:last-child { border-bottom: none; }
-        .stage-dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        :root {
+          --primary: #F06422;
+          --primary-dark: #C8500F;
+          --primary-tint: #fef1e9;
+          --teal: #0FB9AE;
+          --ink: #10142b;
+          --ink-soft: #565d7e;
+          --ink-muted: #8d93ad;
+          --surface: #ffffff;
+          --bg: #f5f6fb;
+          --border: #eceef5;
+          --radius: 16px;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; }
+        body {
+          font-family: 'Inter', 'Segoe UI', sans-serif;
+          color: var(--ink);
+          background:
+            radial-gradient(900px 500px at 15% -10%, rgba(240,100,34,0.08), transparent 60%),
+            radial-gradient(700px 420px at 100% 0%, rgba(15,185,174,0.07), transparent 55%),
+            var(--bg);
+          min-height: 100vh;
+          padding: 44px 18px 60px;
+        }
+        .wrap { max-width: 600px; margin: 0 auto; }
+
+        /* ---------- Header ---------- */
+        .brand-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 30px; }
+        .brand-row img { height: 34px; }
+        .brand-row .brand-name { font-family: 'Sora', sans-serif; font-weight: 700; font-size: .95rem; color: var(--ink); }
+        .eyebrow {
+          text-align: center; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+          color: var(--primary); margin-bottom: 8px;
+        }
+
+        /* ---------- Cards ---------- */
+        .card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          box-shadow: 0 1px 2px rgba(16,20,43,0.03), 0 14px 32px -16px rgba(16,20,43,0.1);
+          padding: 28px 26px;
+          animation: riseIn .5s cubic-bezier(.22,1,.36,1) both;
+        }
+        @keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .hero-card { text-align: center; }
+        .hero-card h1 { font-family: 'Sora', sans-serif; font-size: 1.4rem; font-weight: 700; margin: 0 0 6px; line-height: 1.3; }
+        .hero-card .desc { color: var(--ink-soft); font-size: .88rem; max-width: 420px; margin: 0 auto 18px; line-height: 1.55; }
+
+        /* ---------- Ring ---------- */
+        .ring-wrap { display: flex; justify-content: center; margin: 10px 0 22px; }
+        .ring-wrap svg circle.progress { transition: stroke-dashoffset 1s cubic-bezier(.22,1,.36,1); }
+
+        /* ---------- Stat tiles ---------- */
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px; }
+        .stat-tile { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 10px; }
+        .stat-num { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 1.5rem; line-height: 1; margin-bottom: 4px; }
+        .stat-num.done { color: #16a34a; }
+        .stat-label { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
+
+        /* ---------- Hours bar ---------- */
+        .hours-row { margin-top: 18px; text-align: left; }
+        .hours-row .hours-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+        .hours-track { height: 7px; border-radius: 99px; background: var(--border); overflow: hidden; }
+        .hours-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--primary), #ff8c4d); transition: width .8s cubic-bezier(.22,1,.36,1); }
+
+        .btn {
+          display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+          width: 100%; padding: 12px 18px; margin-top: 20px;
+          border-radius: 10px; font-weight: 600; font-size: 13.5px; cursor: pointer;
+          border: 1px solid var(--border); background: var(--surface); color: var(--ink-soft);
+          transition: all .15s ease; font-family: inherit;
+        }
+        .btn:hover { background: var(--bg); color: var(--ink); transform: translateY(-1px); }
+        .btn-primary {
+          background: var(--primary); color: #fff; border-color: var(--primary);
+          box-shadow: 0 8px 20px -6px rgba(240,100,34,.5);
+        }
+        .btn-primary:hover { background: var(--primary-dark); color: #fff; }
+
+        /* ---------- Section heading ---------- */
+        .section { margin-top: 26px; }
+        .section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 0 2px; }
+        .section-head h2 { font-family: 'Sora', sans-serif; font-size: 1rem; font-weight: 700; margin: 0; }
+        .section-head .count { font-size: 12px; color: var(--ink-muted); font-weight: 600; }
+
+        /* ---------- Stage timeline ---------- */
+        .timeline { position: relative; }
+        .stage-row { position: relative; display: flex; align-items: flex-start; gap: 14px; padding: 0 0 20px; }
+        .stage-row:last-child { padding-bottom: 0; }
+        .stage-row::before {
+          content: ''; position: absolute; left: 13px; top: 28px; bottom: -2px; width: 2px;
+          background: var(--border);
+        }
+        .stage-row:last-child::before { display: none; }
+        .stage-row.is-done::before { background: linear-gradient(var(--primary), var(--border)); }
+        .stage-dot {
+          width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center; z-index: 1;
+          border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--border);
+        }
+        .stage-dot.done { background: #16a34a; color: #fff; box-shadow: 0 0 0 1px #16a34a; }
+        .stage-dot.active { background: var(--primary); color: #fff; box-shadow: 0 0 0 1px var(--primary); animation: dotPulse 2s ease-in-out infinite; }
+        .stage-dot.pending { background: var(--bg); color: var(--ink-muted); }
+        @keyframes dotPulse { 0%, 100% { box-shadow: 0 0 0 1px var(--primary); } 50% { box-shadow: 0 0 0 5px rgba(240,100,34,.18); } }
+        .stage-info { flex: 1; padding-top: 3px; }
+        .stage-name { font-size: .89rem; font-weight: 600; color: var(--ink); }
+        .stage-due { font-size: 11.5px; color: var(--ink-muted); margin-top: 2px; }
+        .stage-pill {
+          font-size: 10.5px; font-weight: 700; text-transform: capitalize; letter-spacing: .02em;
+          padding: 3px 9px; border-radius: 999px; white-space: nowrap; margin-top: 3px; display: inline-block;
+        }
+        .stage-pill.done { background: #f0fdf4; color: #16a34a; }
+        .stage-pill.active { background: var(--primary-tint); color: var(--primary-dark); }
+        .stage-pill.pending { background: var(--bg); color: var(--ink-muted); }
+        .no-stages { font-size: .85rem; color: var(--ink-muted); text-align: center; padding: 10px 0; }
+
+        /* ---------- Feedback ---------- */
+        .feedback-card textarea {
+          width: 100%; min-height: 86px; resize: vertical; padding: 12px 14px; border-radius: 10px;
+          border: 1px solid var(--border); font-family: inherit; font-size: .86rem; color: var(--ink);
+          background: var(--bg); margin-top: 8px;
+        }
+        .feedback-card textarea:focus { outline: none; border-color: var(--primary); background: var(--surface); }
+        .feedback-card label { font-size: .84rem; font-weight: 600; color: var(--ink-soft); }
+        .feedback-sent { color: #16a34a; font-size: .86rem; font-weight: 600; text-align: center; padding: 6px 0; }
+
+        .footer-note { text-align: center; font-size: 12px; color: var(--ink-muted); margin-top: 28px; line-height: 1.6; }
+
+        /* ---------- Loading / error state ---------- */
+        .state-card { text-align: center; padding: 48px 26px; }
+        .state-card h3 { font-family: 'Sora', sans-serif; font-size: 1.05rem; margin: 14px 0 6px; }
+        .state-card p { color: var(--ink-soft); font-size: .86rem; margin: 0; }
+        .spinner {
+          width: 34px; height: 34px; margin: 0 auto;
+          border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%;
+          animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 480px) {
+          .card { padding: 22px 18px; }
+          body { padding: 30px 14px 44px; }
+        }
     </style>
 </head>
-<body class="portal-page">
+<body>
 
 <div class="wrap" id="pdfArea">
     <div class="brand-row" id="brandRow">
-        <img src="assets/logo.png" alt="Euodoo Technologies" style="height:46px;" onerror="this.style.display='none'">
-        <span style="font-family:'Sora',sans-serif; font-weight:700; font-size:.95rem; color:var(--ink);">Euodoo Technologies</span>
+        <img src="assets/logo.png" alt="Euodoo Technologies" onerror="this.style.display='none'">
+        <span class="brand-name">Euodoo Technologies</span>
     </div>
+    <div class="eyebrow">Project Progress</div>
 
     <div id="content">
-        <div class="portal-project-card" style="text-align:center;">
-            <p class="portal-note">Loading progress...</p>
+        <div class="card state-card">
+            <div class="spinner"></div>
+            <h3>Loading progress...</h3>
+            <p>Just a moment.</p>
         </div>
     </div>
 </div>
@@ -46,36 +186,38 @@
     let currentProgress = null;
 
     function ring(percent) {
-      const r = 54, c = 2 * Math.PI * r;
+      const r = 58, c = 2 * Math.PI * r;
       const offset = c - (percent / 100) * c;
       return `
-        <svg width="140" height="140" viewBox="0 0 140 140">
-          <circle cx="70" cy="70" r="${r}" fill="none" stroke="var(--n-bg-subtle, #f0f0f5)" stroke-width="12"/>
-          <circle cx="70" cy="70" r="${r}" fill="none" stroke="var(--primary)" stroke-width="12"
-            stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"
-            transform="rotate(-90 70 70)"/>
-          <text x="70" y="66" text-anchor="middle" font-family="Sora, sans-serif" font-size="26" font-weight="700" fill="var(--ink)">${percent}%</text>
-          <text x="70" y="86" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="var(--ink-muted)">complete</text>
+        <svg width="152" height="152" viewBox="0 0 152 152">
+          <circle cx="76" cy="76" r="${r}" fill="none" stroke="var(--border)" stroke-width="13"/>
+          <circle class="progress" cx="76" cy="76" r="${r}" fill="none" stroke="var(--primary)" stroke-width="13"
+            stroke-dasharray="${c}" stroke-dashoffset="${c}" data-final-offset="${offset}" stroke-linecap="round"
+            transform="rotate(-90 76 76)"/>
+          <text x="76" y="71" text-anchor="middle" font-family="Sora, sans-serif" font-size="28" font-weight="800" fill="var(--ink)">${percent}%</text>
+          <text x="76" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="var(--ink-muted)">complete</text>
         </svg>`;
     }
 
-    function stageDot(status) {
-      if (status === 'done') return `<div class="stage-dot" style="background:#f0fdf4; color:#16a34a;">${icon('check', 13)}</div>`;
-      if (status === 'in_progress') return `<div class="stage-dot" style="background:#eff6ff; color:#2563eb;">${icon('clock', 13)}</div>`;
-      return `<div class="stage-dot" style="background:var(--n-bg-subtle, #f0f0f5); color:var(--ink-muted);">${icon('dot', 9)}</div>`;
+    function stageDotClass(status) {
+      if (status === 'done') return 'done';
+      if (status === 'in_progress') return 'active';
+      return 'pending';
     }
 
     function submitFeedback(event) {
       event.preventDefault();
       const text = document.getElementById('feedbackText').value.trim();
       if (!text) return;
+      const btn = event.target.querySelector('button');
+      btn.disabled = true; btn.textContent = 'Sending...';
       supabaseClient.from('client_feedback').insert({ project_id: projectId, message: text }).then(({ error }) => {
         const box = document.getElementById('feedbackBox');
         if (error) {
-          box.innerHTML = `<p class="portal-note">Could not send your note. Please try again or contact the team directly.</p>`;
+          box.innerHTML = `<div class="card feedback-card"><p class="feedback-sent" style="color:#b91c1c;">Could not send your note. Please try again or contact the team directly.</p></div>`;
           return;
         }
-        box.innerHTML = `<p style="color:#16a34a; font-size:.86rem; font-weight:600;">Thanks — your note has been sent to the team.</p>`;
+        box.innerHTML = `<div class="card feedback-card"><p class="feedback-sent">${icon('check', 15)} Thanks — your note has been sent to the team.</p></div>`;
       });
     }
 
@@ -110,7 +252,7 @@
       const content = document.getElementById('content');
 
       if (!token) {
-        content.innerHTML = `<div class="portal-project-card" style="text-align:center;"><h3>Link incomplete</h3><p class="portal-note">This link is missing required information.</p></div>`;
+        content.innerHTML = `<div class="card state-card"><h3>Link incomplete</h3><p>This link is missing required information.</p></div>`;
         return;
       }
 
@@ -120,7 +262,7 @@
       const progress = (rows || [])[0];
 
       if (error || !progress) {
-        content.innerHTML = `<div class="portal-project-card" style="text-align:center;"><h3>Link unavailable</h3><p class="portal-note">This progress link is invalid or has been disabled by the team.</p></div>`;
+        content.innerHTML = `<div class="card state-card"><h3>Link unavailable</h3><p>This progress link is invalid or has been disabled by the team.</p></div>`;
         return;
       }
       currentProgress = progress;
@@ -128,64 +270,80 @@
       // Custom branding, if the team set any
       if (progress.client_brand_color) {
         document.body.style.setProperty('--primary', progress.client_brand_color);
+        document.body.style.setProperty('--primary-dark', progress.client_brand_color);
       }
       if (progress.client_logo_url) {
-        document.getElementById('brandRow').innerHTML = `<img src="${progress.client_logo_url.replace(/"/g,'')}" alt="${escapeHtml(progress.name)}" style="height:30px;">`;
+        document.getElementById('brandRow').innerHTML = `<img src="${progress.client_logo_url.replace(/"/g,'')}" alt="${escapeHtml(progress.name)}" style="height:34px;" onerror="this.style.display='none'">`;
       }
 
       const { data: stages } = await supabaseClient.rpc('get_shared_project_stages', { p_token: token });
       window.__stages = (stages || []).sort((a, b) => (a.position || 0) - (b.position || 0));
 
+      const hoursPct = progress.estimated_hours_total > 0
+        ? Math.min(100, Math.round((progress.actual_hours_total / progress.estimated_hours_total) * 100))
+        : 0;
+
       content.innerHTML = `
-        <div class="portal-project-card">
-          <h1 style="font-size:1.3rem; text-align:center;">${escapeHtml(progress.name)}</h1>
-          ${progress.description ? `<p class="portal-note" style="text-align:center; margin-top:6px;">${escapeHtml(progress.description)}</p>` : ''}
+        <div class="card hero-card">
+          <h1>${escapeHtml(progress.name)}</h1>
+          ${progress.description ? `<p class="desc">${escapeHtml(progress.description)}</p>` : ''}
           <div class="ring-wrap">${ring(progress.percent_complete)}</div>
-          <div class="portal-stats-grid" style="grid-template-columns:repeat(2,1fr);">
-            <div class="portal-stat-card" style="text-align:center;">
-              <div class="portal-stat-value" style="color:#16a34a;">${progress.done_tasks}</div>
-              <div class="portal-stat-label">Completed</div>
+          <div class="stat-grid">
+            <div class="stat-tile">
+              <div class="stat-num done">${progress.done_tasks}</div>
+              <div class="stat-label">Completed</div>
             </div>
-            <div class="portal-stat-card" style="text-align:center;">
-              <div class="portal-stat-value">${progress.pending_tasks}</div>
-              <div class="portal-stat-label">Pending</div>
+            <div class="stat-tile">
+              <div class="stat-num">${progress.pending_tasks}</div>
+              <div class="stat-label">Pending</div>
             </div>
           </div>
-          ${progress.estimated_hours_total > 0 ? `<p class="portal-note" style="text-align:center; margin-top:12px;">${progress.actual_hours_total}h logged of ${progress.estimated_hours_total}h estimated</p>` : ''}
-          <button class="btn btn-secondary" style="width:100%; justify-content:center; margin-top:14px;" onclick="downloadPdf()">Download as PDF</button>
+          ${progress.estimated_hours_total > 0 ? `
+            <div class="hours-row">
+              <div class="hours-label"><span>Hours logged</span><span>${progress.actual_hours_total}h of ${progress.estimated_hours_total}h</span></div>
+              <div class="hours-track"><div class="hours-fill" style="width:${hoursPct}%;"></div></div>
+            </div>
+          ` : ''}
+          <button class="btn" onclick="downloadPdf()">${icon('arrow-right', 13)} Download as PDF</button>
         </div>
 
-        <div class="portal-section">
-          <div class="portal-section-head"><h2>Stages${stages && stages.length ? ` (${stages.length})` : ''}</h2></div>
-          <div class="portal-table-wrap" style="padding:8px 14px;">
-            ${stages && stages.length ? stages.map(s => `
-              <div class="stage-row">
-                ${stageDot(s.status)}
-                <span style="flex:1; font-size:.88rem;">
-                  ${escapeHtml(s.name)}
-                  ${s.due_date ? `<div class="portal-note" style="font-size:11px; margin-top:2px;">${dueDateLabel(s.due_date, s.status)}</div>` : ''}
-                </span>
-                <span class="status-pill ${s.status === 'done' ? 'status-green' : s.status === 'in_progress' ? 'status-blue' : 'status-muted'}">${statusLabel(s.status)}</span>
-              </div>
-            `).join('') : `<p class="portal-note" style="padding:10px 0;">The team hasn't defined stages for this project yet.</p>`}
+        <div class="section">
+          <div class="section-head"><h2>Stages</h2>${stages && stages.length ? `<span class="count">${stages.length}</span>` : ''}</div>
+          <div class="card">
+            ${stages && stages.length ? `<div class="timeline">${stages.map(s => {
+              const cls = stageDotClass(s.status);
+              return `
+              <div class="stage-row ${cls === 'done' ? 'is-done' : ''}">
+                <div class="stage-dot ${cls}">${cls === 'done' ? icon('check', 13) : cls === 'active' ? icon('clock', 13) : icon('dot', 8)}</div>
+                <div class="stage-info">
+                  <div class="stage-name">${escapeHtml(s.name)}</div>
+                  ${s.due_date ? `<div class="stage-due">${dueDateLabel(s.due_date, s.status)}</div>` : ''}
+                  <div><span class="stage-pill ${cls}">${statusLabel(s.status)}</span></div>
+                </div>
+              </div>`;
+            }).join('')}</div>` : `<p class="no-stages">The team hasn't defined stages for this project yet.</p>`}
           </div>
         </div>
 
-        <div class="portal-section" id="feedbackBox">
-          <div class="portal-section-head"><h2>Have feedback?</h2></div>
-          <div class="portal-project-card">
+        <div class="section" id="feedbackBox">
+          <div class="section-head"><h2>Have feedback?</h2></div>
+          <div class="card feedback-card">
             <form onsubmit="submitFeedback(event)">
-              <div class="portal-field">
-                <label>Let the team know if something needs a change</label>
-                <textarea id="feedbackText" placeholder="e.g. Can we adjust the homepage layout once design is ready?" required></textarea>
-              </div>
-              <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Send to Team</button>
+              <label>Let the team know if something needs a change</label><br>
+              <textarea id="feedbackText" placeholder="e.g. Can we adjust the homepage layout once design is ready?" required></textarea>
+              <button type="submit" class="btn btn-primary">Send to Team</button>
             </form>
           </div>
         </div>
 
-        <p class="portal-note" style="text-align:center; margin-top:20px;">Progress updates automatically as the Euodoo team completes work. Refresh this page any time for the latest status.</p>
+        <p class="footer-note">Progress updates automatically as the Euodoo team completes work.<br>Refresh this page any time for the latest status.</p>
       `;
+
+      // Animate the ring filling in after paint.
+      requestAnimationFrame(() => {
+        const circle = content.querySelector('.ring-wrap circle.progress');
+        if (circle) circle.style.strokeDashoffset = circle.dataset.finalOffset;
+      });
     }
 
     load();
