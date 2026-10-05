@@ -219,6 +219,14 @@ body.dark-mode .week-task,
 body.dark-mode .week-day { background: #1a1e3d; }
 body.dark-mode .status-gold { background: #3a3212; color: #f3d374; border-color: #5c4c14; }
 body.dark-mode #darkModeBtn svg { fill: #f3d374; stroke: #f3d374; }
+body.dark-mode .status-green { background: #0f2d1c; color: #6ee7a5; border-color: #15532f; }
+body.dark-mode .status-blue { background: #11234a; color: #8fb5fb; border-color: #1c3a74; }
+body.dark-mode .status-red,
+body.dark-mode .status-halfday,
+body.dark-mode .priority-high { background: #3a1414; color: #fca5a5; border-color: #5c1f1f; }
+body.dark-mode .priority-medium { background: #3a3212; color: #f3d374; border-color: #5c4c14; }
+body.dark-mode .priority-low { background: var(--n-bg-subtle); color: var(--ink-soft); border-color: var(--border-rule); }
+body.dark-mode .priority-urgent { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
 
 /* ---------- Tags ---------- */
 .tag-chip {

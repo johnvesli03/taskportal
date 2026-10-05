@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tasks — Euodoo Task Portal</title>
-  <link rel="icon" type="image/png" href="assets/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="icon" type="image/png" href="assets/logo.png">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/portal.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -74,8 +74,8 @@
 
     <div class="bulk-bar" id="bulkBar" style="display:none;">
       <span id="bulkCount" style="font-size:.82rem; font-weight:600; color:var(--primary-dark);"></span>
-      <select id="bulkAssignee" class="input-box" style="max-width:200px; padding:6px 10px;"><option value="">Reassign to...</option></select>
-      <button class="btn btn-secondary" style="padding:6px 12px; font-size:12.5px;" onclick="bulkReassign()">Apply Reassign</button>
+      <select id="bulkAssignee" class="input-box" data-admin-only="1" style="display:none; max-width:200px; padding:6px 10px;"><option value="">Reassign to...</option></select>
+      <button class="btn btn-secondary" id="bulkReassignBtn" data-admin-only="1" style="display:none; padding:6px 12px; font-size:12.5px;" onclick="bulkReassign()">Apply Reassign</button>
       <button class="btn btn-secondary" style="padding:6px 12px; font-size:12.5px;" onclick="bulkMarkDone()">Mark Done</button>
       <button class="btn btn-secondary" style="padding:6px 12px; font-size:12.5px;" onclick="clearSelection()">Clear</button>
     </div>
@@ -166,6 +166,7 @@
   }
 
   async function bulkReassign() {
+    if (!isAdmin(currentProfile)) { await customAlert('Only an admin can reassign tasks.', { title: 'Not allowed' }); return; }
     const to = document.getElementById('bulkAssignee').value;
     if (!to) { await customAlert('Pick someone to reassign to first.', { title: 'Nothing selected' }); return; }
     for (const id of selectedIds) {
