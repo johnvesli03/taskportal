@@ -214,7 +214,8 @@
       supabaseClient.from('client_feedback').insert({ project_id: projectId, message: text }).then(({ error }) => {
         const box = document.getElementById('feedbackBox');
         if (error) {
-          box.innerHTML = `<div class="card feedback-card"><p class="feedback-sent" style="color:#b91c1c;">Could not send your note. Please try again or contact the team directly.</p></div>`;
+          const msg = /too many|too long/i.test(error.message || '') ? error.message : 'Could not send your note. Please try again or contact the team directly.';
+          box.innerHTML = `<div class="card feedback-card"><p class="feedback-sent" style="color:#b91c1c;">${escapeHtml(msg)}</p></div>`;
           return;
         }
         box.innerHTML = `<div class="card feedback-card"><p class="feedback-sent">${icon('check', 15)} Thanks — your note has been sent to the team.</p></div>`;

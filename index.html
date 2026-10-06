@@ -104,6 +104,10 @@
 
   <form id="forgotForm" style="display:none;">
     <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="forgotEmail" placeholder="you@company.com" required>
+    </div>
+    <div class="auth-field">
       <label>Employee ID</label>
       <input type="text" id="forgotEmployeeId" placeholder="e.g. ET003" required autocapitalize="characters">
     </div>
@@ -142,11 +146,12 @@
     e.preventDefault();
     errorBox.style.display = 'none';
     const employeeId = document.getElementById('forgotEmployeeId').value.trim();
+    const email = document.getElementById('forgotEmail').value.trim();
     const btn = forgotForm.querySelector('button');
     btn.textContent = 'Sending...';
     try {
-      const { data: email, error: resolveErr } = await supabaseClient.rpc('resolve_employee_login', { p_employee_id: employeeId });
-      if (resolveErr || !email) throw new Error('No account found for that Employee ID.');
+      const { data: matches, error: resolveErr } = await supabaseClient.rpc('verify_employee_login', { p_email: email, p_employee_id: employeeId });
+      if (resolveErr || matches !== true) throw new Error('That email and Employee ID do not match an account.');
       const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}${window.location.pathname.replace('index.html', '')}reset-password.html`
       });
@@ -172,8 +177,8 @@
       // The Employee ID must belong to the SAME account as the email typed
       // in — resolve it server-side and compare, rather than trusting the
       // form. Mismatch gets the same generic error as a wrong password.
-      const { data: resolvedEmail, error: resolveErr } = await supabaseClient.rpc('resolve_employee_login', { p_employee_id: employeeId });
-      if (resolveErr || !resolvedEmail || resolvedEmail.toLowerCase() !== email.toLowerCase()) throw new Error(BAD_LOGIN);
+      const { data: matches, error: resolveErr } = await supabaseClient.rpc('verify_employee_login', { p_email: email, p_employee_id: employeeId });
+      if (resolveErr || matches !== true) throw new Error(BAD_LOGIN);
 
       const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) throw new Error(BAD_LOGIN);

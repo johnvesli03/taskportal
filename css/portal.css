@@ -988,3 +988,20 @@ body.dark-mode .portal-timeline-row--mint { background: rgba(34, 197, 94, 0.12);
 body.dark-mode .portal-timeline-row--mint .portal-timeline-icon { background: #1c2044; color: #4ade80; }
 body.dark-mode .portal-timeline-row--sky { background: rgba(59, 130, 246, 0.14); }
 body.dark-mode .portal-timeline-row--sky .portal-timeline-icon { background: #1c2044; color: #60a5fa; }
+
+/* Multi-person assignee picker (new-task forms) */
+.assignee-picker {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  max-height: 150px; overflow-y: auto;
+  padding: 8px; border: 1px solid var(--border-rule); border-radius: 10px;
+  background: var(--n-bg-subtle, #f8f9fb);
+}
+.assignee-option {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 999px; font-size: .8rem; font-weight: 500;
+  border: 1px solid var(--border-rule); background: var(--surface); color: var(--ink-soft);
+  cursor: pointer; user-select: none; transition: border-color .15s, background .15s, color .15s;
+}
+.assignee-option:hover { border-color: var(--border-strong); }
+.assignee-option:has(input:checked) { background: var(--primary); border-color: var(--primary); color: #fff; }
+.assignee-option input { accent-color: #fff; margin: 0; }

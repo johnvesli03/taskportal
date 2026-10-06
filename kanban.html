@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kanban — Euodoo Task Portal</title>
-  <link rel="icon" type="image/png" href="assets/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="icon" type="image/png" href="assets/logo.png">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/portal.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -88,7 +88,7 @@
       .from('tasks')
       .select('*, project:projects(name), assignee:profiles!tasks_assigned_to_fkey(name)')
       .order('created_at', { ascending: false });
-    if (!isAdmin(currentProfile)) query = query.or(`assigned_to.eq.${currentProfile.id},created_by.eq.${currentProfile.id}`);
+    // Non-admins are already scoped by the tasks RLS policy (assigned, co-assigned or created).
 
     const { data: tasks, error } = await query;
     const board = document.getElementById('board');
@@ -119,15 +119,15 @@
     if (!task || task.status === newStatus) return;
 
     if (newStatus === 'done' && task.status !== 'pending_approval' && !isAdmin(currentProfile)) {
-      if (!(await customConfirm('Moving straight to Done skips admin approval. Continue anyway?', { confirmText: 'Continue', danger: true }))) return;
+      if (!(await customConfirm('Mark this task as Done? You will still need to open it and request closure so an admin can approve it. Continue?', { confirmText: 'Continue', danger: true }))) return;
     }
 
-    await supabaseClient.from('tasks').update({ status: newStatus }).eq('id', taskId);
+    if (!(await writeChecked(supabaseClient.from('tasks').update({ status: newStatus }).eq('id', taskId), 'The task was not moved.'))) { renderBoard(); return; }
     await supabaseClient.from('task_updates').insert({
       task_id: taskId, user_id: currentProfile.id, kind: 'update',
       update_text: 'Moved via Kanban board', old_status: task.status, new_status: newStatus, is_system: true
     });
-    if (newStatus === 'done') handleRecurrence(task, currentProfile.id);
+    if (newStatus === 'done' && isAdmin(currentProfile)) handleRecurrence(task, currentProfile.id);
     notifyWebhook(`:arrows_counterclockwise: *${task.title}* moved to ${statusLabel(newStatus)} via Kanban`);
     showToast('success', 'Status updated', `Task moved to ${statusLabel(newStatus)}.`);
     renderBoard();

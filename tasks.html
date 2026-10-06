@@ -122,8 +122,8 @@
           <input type="number" class="input-box" id="tEstHours" min="0" step="0.5" placeholder="e.g. 6">
         </div>
         <div class="portal-field">
-          <label>Assign To</label>
-          <select id="tAssignee"><option value="">Unassigned</option></select>
+          <label>Assign To <span class="portal-note">(tick one or more people)</span></label>
+          <div id="tAssigneeList" class="assignee-picker"><span class="portal-note">Loading team...</span></div>
         </div>
       </div>
       <div class="portal-field">
@@ -170,7 +170,10 @@
     const to = document.getElementById('bulkAssignee').value;
     if (!to) { await customAlert('Pick someone to reassign to first.', { title: 'Nothing selected' }); return; }
     for (const id of selectedIds) {
-      await supabaseClient.from('tasks').update({ assigned_to: to }).eq('id', id);
+      if (!(await writeChecked(supabaseClient.from('tasks').update({ assigned_to: to }).eq('id', id), 'A task was not reassigned.'))) return;
+      // Keep the multi-assignee list in step, otherwise the task page still shows the old person.
+      await supabaseClient.from('task_assignees').delete().eq('task_id', id);
+      await supabaseClient.from('task_assignees').insert({ task_id: id, user_id: to });
     }
     showToast('success', 'Reassigned', `${selectedIds.size} task(s) reassigned.`);
     clearSelection();
@@ -180,7 +183,7 @@
   async function bulkMarkDone() {
     if (!(await customConfirm(`Mark ${selectedIds.size} task(s) as Done?`, { confirmText: 'Mark Done' }))) return;
     for (const id of selectedIds) {
-      await supabaseClient.from('tasks').update({ status: 'done' }).eq('id', id);
+      if (!(await writeChecked(supabaseClient.from('tasks').update({ status: 'done' }).eq('id', id), 'A task could not be marked done.'))) return;
       await supabaseClient.from('task_updates').insert({
         task_id: id, user_id: currentProfile.id, kind: 'update',
         update_text: 'Marked done via bulk action', new_status: 'done'
@@ -242,14 +245,11 @@
 
   async function loadTeamIntoSelect() {
     const { data: people } = await supabaseClient.from('profiles').select('id, name').order('name');
-    const select = document.getElementById('tAssignee');
     const bulkSelect = document.getElementById('bulkAssignee');
+    document.getElementById('tAssigneeList').innerHTML = (people || []).map(p =>
+      `<label class="assignee-option"><input type="checkbox" value="${p.id}" ${p.id === currentProfile.id ? 'checked' : ''}> ${escapeHtml(p.name)}</label>`
+    ).join('') || '<span class="portal-note">No team members found.</span>';
     (people || []).forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id; opt.textContent = p.name;
-      if (p.id === currentProfile.id) opt.selected = true;
-      select.appendChild(opt);
-
       const opt2 = document.createElement('option');
       opt2.value = p.id; opt2.textContent = p.name;
       bulkSelect.appendChild(opt2);
@@ -258,6 +258,8 @@
 
   document.getElementById('taskForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    let picked = Array.from(document.querySelectorAll('#tAssigneeList input:checked')).map(i => i.value);
+    if (!picked.length) picked = [currentProfile.id];
     const { data: newTask, error } = await supabaseClient.from('tasks').insert({
       project_id: null,
       title: document.getElementById('tTitle').value.trim(),
@@ -265,13 +267,15 @@
       priority: document.getElementById('tPriority').value,
       due_date: document.getElementById('tDue').value || null,
       estimated_hours: document.getElementById('tEstHours').value || null,
-      assigned_to: document.getElementById('tAssignee').value || currentProfile.id,
+      assigned_to: picked[0],
       recurrence: document.getElementById('tRecurrence').value,
       created_by: currentProfile.id
     }).select().single();
 
     if (error) { await customAlert('Could not create task: ' + error.message, { title: 'Something went wrong', danger: true }); return; }
 
+    const { error: asgErr } = await supabaseClient.from('task_assignees').insert(picked.map(uid => ({ task_id: newTask.id, user_id: uid })));
+    if (asgErr) await customAlert('The task was created, but the assignee list could not be saved: ' + asgErr.message, { title: 'Partly saved', danger: true });
     await supabaseClient.from('task_updates').insert({
       task_id: newTask.id, user_id: currentProfile.id,
       update_text: 'Task created', old_status: null, new_status: 'todo', is_system: true
@@ -289,9 +293,7 @@
       .select('*, project:projects(name), assignee:profiles!tasks_assigned_to_fkey(name)')
       .order('created_at', { ascending: false });
 
-    if (!isAdmin(currentProfile)) {
-      query = query.or(`assigned_to.eq.${currentProfile.id},created_by.eq.${currentProfile.id}`);
-    }
+    // Non-admins are already scoped by the tasks RLS policy (assigned, co-assigned or created).
 
     const { data: tasks, error } = await query;
     if (error) { document.getElementById('tasksList').innerHTML = `<p class="portal-note">Could not load tasks.</p>`; return; }

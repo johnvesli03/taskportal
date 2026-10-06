@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project — Euodoo Task Portal</title>
-  <link rel="icon" type="image/png" href="assets/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="icon" type="image/png" href="assets/logo.png">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/portal.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -58,6 +58,8 @@
         <button class="btn btn-danger" id="deleteProjectBtn" data-admin-only="1" style="display:none;" onclick="deleteProject()">Delete Project</button>
       </div>
     </div>
+
+    <div id="closureArea" style="display:none; margin-bottom:20px;"></div>
 
     <div class="portal-project-card" style="margin-bottom:20px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px; flex-wrap:wrap;">
@@ -139,8 +141,8 @@
         <input type="number" class="input-box" id="tEstHours" min="0" step="0.5" placeholder="e.g. 6">
       </div>
       <div class="portal-field">
-        <label>Assign To</label>
-        <select id="tAssignee"><option value="">Unassigned</option></select>
+        <label>Assign To <span class="portal-note">(tick one or more people)</span></label>
+        <div id="tAssigneeList" class="assignee-picker"><span class="portal-note">Loading team...</span></div>
       </div>
       <div class="premium-modal__actions">
         <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
@@ -368,12 +370,9 @@
 
   async function loadTeamIntoSelect() {
     const { data: people } = await supabaseClient.from('profiles').select('id, name').order('name');
-    const select = document.getElementById('tAssignee');
-    (people || []).forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id; opt.textContent = p.name;
-      select.appendChild(opt);
-    });
+    document.getElementById('tAssigneeList').innerHTML = (people || []).map(p =>
+      `<label class="assignee-option"><input type="checkbox" value="${p.id}"> ${escapeHtml(p.name)}</label>`
+    ).join('') || '<span class="portal-note">No team members found.</span>';
   }
 
   function renderTasks(tasks) {
@@ -419,6 +418,91 @@
     document.getElementById('progressSummary').textContent = total
       ? `${percent}% complete · ${done} of ${total} tasks done · ${total - done} pending`
       : 'No tasks yet';
+    renderClosureArea(total, done);
+  }
+
+  /* ---------- Project closure request ---------- */
+  async function renderClosureArea(total, done) {
+    const area = document.getElementById('closureArea');
+    if (!area || !currentProject) return;
+    const admin = isAdmin(currentProfile);
+    const allDone = total > 0 && done === total;
+    const box = (bg, border, color, inner) =>
+      `<div style="background:${bg}; border:1px solid ${border}; border-radius:10px; padding:12px 14px; color:${color}; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:.84rem;">${inner}</div>`;
+
+    if (currentProject.status === 'completed') {
+      area.style.display = 'block';
+      area.innerHTML = box('#f0fdf4', '#bbf7d0', '#166534', `<span style="display:flex; align-items:center; gap:6px;">${icon('check', 14)} This project has been marked completed.</span>`);
+      return;
+    }
+
+    if (admin) {
+      if (currentProject.close_requested) {
+        let who = 'A team member';
+        if (currentProject.close_requested_by) {
+          const { data: p } = await supabaseClient.from('profiles').select('name').eq('id', currentProject.close_requested_by).single();
+          if (p) who = p.name;
+        }
+        area.style.display = 'block';
+        area.innerHTML = box('#fefce8', '#fde68a', '#854d0e', `
+          <span style="display:flex; align-items:center; gap:6px;">${icon('flag', 14)} ${escapeHtml(who)} requested to close this project — all tasks are done.</span>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" style="padding:7px 14px; font-size:12.5px;" onclick="dismissProjectClosure()">Dismiss</button>
+            <button class="btn btn-primary" style="padding:7px 14px; font-size:12.5px;" onclick="completeProject()">Mark Completed</button>
+          </div>`);
+      } else if (allDone) {
+        area.style.display = 'block';
+        area.innerHTML = box('#f0fdf4', '#bbf7d0', '#166534', `
+          <span style="display:flex; align-items:center; gap:6px;">${icon('check', 14)} Every task is done.</span>
+          <button class="btn btn-primary" style="padding:7px 14px; font-size:12.5px;" onclick="completeProject()">Mark Project Completed</button>`);
+      } else {
+        area.style.display = 'none';
+      }
+      return;
+    }
+
+    // Employees
+    if (total === 0) { area.style.display = 'none'; return; }
+    area.style.display = 'block';
+    if (currentProject.close_requested) {
+      area.innerHTML = box('#fefce8', '#fde68a', '#854d0e', `<span style="display:flex; align-items:center; gap:6px;">${icon('flag', 14)} Closure requested — waiting on admin approval.</span>`);
+    } else if (allDone) {
+      area.innerHTML = box('#f0fdf4', '#bbf7d0', '#166534', `
+        <span style="display:flex; align-items:center; gap:6px;">${icon('check', 14)} Every task is done — you can ask an admin to close this project.</span>
+        <button class="btn btn-primary" style="padding:7px 14px; font-size:12.5px;" onclick="requestProjectClosure()">Request to Close Project</button>`);
+    } else {
+      area.innerHTML = `<button class="btn btn-secondary" disabled style="opacity:.5; cursor:not-allowed;">${icon('check', 14)} Request to Close Project</button>
+        <span class="portal-note" style="margin-left:10px; font-size:.78rem;">Available once every task in this project is done.</span>`;
+    }
+  }
+
+  async function requestProjectClosure() {
+    if (!(await customConfirm('Send this project to an admin for closure approval?', { title: 'Request to close project', confirmText: 'Send request' }))) return;
+    const { error } = await supabaseClient.rpc('request_project_closure', { p_project_id: projectId });
+    if (error) { await customAlert(error.message, { title: 'Could not send request', danger: true }); return; }
+    showToast('info', 'Requested', 'Closure request sent to admin.');
+    const { data: fresh } = await supabaseClient.from('projects').select('*').eq('id', projectId).single();
+    if (fresh) currentProject = fresh;
+    loadTasks();
+  }
+
+  async function completeProject() {
+    if (!(await customConfirm('Mark this project as completed?', { title: 'Complete project', confirmText: 'Mark completed' }))) return;
+    const { error } = await supabaseClient.from('projects')
+      .update({ status: 'completed', close_requested: false, close_requested_by: null, close_requested_at: null }).eq('id', projectId);
+    if (error) { await customAlert(error.message, { title: 'Something went wrong', danger: true }); return; }
+    currentProject.status = 'completed'; currentProject.close_requested = false;
+    showToast('success', 'Project completed', 'The project is now marked completed.');
+    loadTasks();
+  }
+
+  async function dismissProjectClosure() {
+    const { error } = await supabaseClient.from('projects')
+      .update({ close_requested: false, close_requested_by: null, close_requested_at: null }).eq('id', projectId);
+    if (error) { await customAlert(error.message, { title: 'Something went wrong', danger: true }); return; }
+    currentProject.close_requested = false;
+    showToast('info', 'Dismissed', 'Closure request dismissed.');
+    loadTasks();
   }
 
   function exportProjectTasksCSV() {
@@ -430,6 +514,7 @@
 
   document.getElementById('taskForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const picked = Array.from(document.querySelectorAll('#tAssigneeList input:checked')).map(i => i.value);
     const { data: newTask, error } = await supabaseClient.from('tasks').insert({
       project_id: projectId,
       title: document.getElementById('tTitle').value.trim(),
@@ -437,12 +522,16 @@
       priority: document.getElementById('tPriority').value,
       due_date: document.getElementById('tDue').value || null,
       estimated_hours: document.getElementById('tEstHours').value || null,
-      assigned_to: document.getElementById('tAssignee').value || null,
+      assigned_to: picked[0] || null,
       created_by: currentProfile.id
     }).select().single();
 
     if (error) { await customAlert('Could not add task: ' + error.message, { title: 'Something went wrong', danger: true }); return; }
 
+    if (picked.length) {
+      const { error: asgErr } = await supabaseClient.from('task_assignees').insert(picked.map(uid => ({ task_id: newTask.id, user_id: uid })));
+      if (asgErr) await customAlert('The task was created, but the assignee list could not be saved: ' + asgErr.message, { title: 'Partly saved', danger: true });
+    }
     await supabaseClient.from('task_updates').insert({
       task_id: newTask.id, user_id: currentProfile.id,
       update_text: 'Task created', old_status: null, new_status: 'todo', is_system: true

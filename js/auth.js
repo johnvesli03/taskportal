@@ -12,7 +12,7 @@ async function requireAuth() {
   }
   const { data: profile, error } = await supabaseClient
     .from('profiles')
-    .select('*')
+    .select('id, name, email, role, avatar_color, created_at')
     .eq('id', session.user.id)
     .single();
 
@@ -221,6 +221,18 @@ function showToast(type, title, message, opts) {
 // Queue a toast to show on the NEXT page (used before a redirect, e.g. login/logout)
 function queueToast(type, title, message, opts) {
   sessionStorage.setItem('pendingToast', JSON.stringify({ type, title, message, opts: opts || {} }));
+}
+
+// Runs an insert/update/delete and tells the user if it silently did nothing.
+// (Row-level security can reject a write WITHOUT raising an error — the query
+// just affects 0 rows — so checking `error` alone isn't enough.)
+async function writeChecked(query, failMsg) {
+  const { data, error } = await query.select();
+  if (error || !data || !data.length) {
+    await customAlert((failMsg || 'That change could not be saved.') + (error ? ' ' + error.message : ' You may not have permission.'), { title: 'Not saved', danger: true });
+    return false;
+  }
+  return true;
 }
 
 function flushPendingToast() {

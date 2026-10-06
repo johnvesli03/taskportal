@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Team — Euodoo Task Portal</title>
-  <link rel="icon" type="image/png" href="assets/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="icon" type="image/png" href="assets/logo.png">
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/portal.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -179,20 +179,20 @@
 
   async function toggleRole(id, currentRole) {
     const newRole = currentRole === 'admin' ? 'member' : 'admin';
-    if (!confirm(`Change this person's role to "${newRole}"?`)) return;
+    if (!(await customConfirm(`Change this person's role to "${newRole}"?`, { confirmText: 'Change role' }))) return;
     const { error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', id);
-    if (error) { alert('Could not update role: ' + error.message); return; }
+    if (error) { await customAlert('Could not update role: ' + error.message, { title: 'Something went wrong', danger: true }); return; }
     loadTeam();
   }
 
   async function editEmployeeId(id, currentId) {
-    const next = prompt('Employee ID for sign-in (e.g. ET003):', currentId || '');
+    const next = await customPrompt('Employee ID for sign-in:', currentId || '', { title: 'Edit Employee ID', placeholder: 'e.g. ET003', okText: 'Save' });
     if (next === null) return;
     const trimmed = next.trim();
-    if (!trimmed) { alert('Employee ID can\'t be empty — they need it to sign in.'); return; }
+    if (!trimmed) { await customAlert('Employee ID can\'t be empty — they need it to sign in.', { title: 'Nothing entered' }); return; }
     const { error } = await supabaseClient.from('profiles').update({ employee_id: trimmed }).eq('id', id);
     if (error) {
-      alert(/duplicate|unique/i.test(error.message) ? 'That Employee ID is already in use by someone else.' : 'Could not update: ' + error.message);
+      await customAlert(/duplicate|unique/i.test(error.message) ? 'That Employee ID is already in use by someone else.' : 'Could not update: ' + error.message, { title: 'Something went wrong', danger: true });
       return;
     }
     showToast('success', 'Saved', `Employee ID set to ${trimmed}.`);
@@ -200,9 +200,14 @@
   }
 
   async function loadTeam() {
-    const { data: people, error } = await supabaseClient.from('profiles').select('*').order('created_at');
+    const { data: people, error } = await supabaseClient.from('profiles').select('id, name, email, role, avatar_color, created_at').order('created_at');
     const list = document.getElementById('teamList');
     if (error) { list.innerHTML = `<p class="portal-note">Could not load team.</p>`; return; }
+    // Employee IDs are hidden from normal reads — admins fetch them through a checked function.
+    const { data: idRows } = await supabaseClient.rpc('admin_list_employee_ids');
+    const idMap = {};
+    (idRows || []).forEach(r => { idMap[r.id] = r.employee_id; });
+    (people || []).forEach(p => { p.employee_id = idMap[p.id] || null; });
 
     list.innerHTML = `<table class="portal-table"><tbody>` + (people || []).map(p => `
       <tr>
