@@ -115,7 +115,6 @@
   </form>
 
   <hr class="auth-divider">
-
   <p class="auth-note">New here? Please contact your administrator to have an account created for you, along with your Employee ID and sign-in credentials.</p>
 </div>
 
@@ -133,7 +132,7 @@
     e.preventDefault();
     form.style.display = 'none';
     forgotForm.style.display = 'block';
-    document.querySelector('.auth-note').style.display = 'none';
+    document.querySelectorAll('.auth-note').forEach(n => n.style.display = 'none');
     formTitle.textContent = 'Reset your password';
     errorBox.style.display = 'none';
   });
@@ -180,11 +179,14 @@
       const { data: matches, error: resolveErr } = await supabaseClient.rpc('verify_employee_login', { p_email: email, p_employee_id: employeeId });
       if (resolveErr || matches !== true) throw new Error(BAD_LOGIN);
 
-      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      const { data: signed, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) throw new Error(BAD_LOGIN);
 
       queueToast('success', 'Signed in', `Welcome back!`, { sound: true });
-      window.location.href = 'dashboard.html';
+      try { await supabaseClient.rpc('record_login', { p_user_agent: navigator.userAgent }); } catch (e) {}
+      // Marketing accounts go straight to the register (no task-portal flash).
+      const { data: prof } = await supabaseClient.from('profiles').select('role').eq('id', signed.user.id).single();
+      window.location.href = (prof && prof.role === 'marketing') ? 'register.html' : 'dashboard.html';
     } catch (err) {
       const message = err.message || 'Something went wrong. Please try again.';
       errorBox.style.display = 'block';
@@ -197,7 +199,10 @@
   (async () => {
     flushPendingToast();
     const { data: { session } } = await supabaseClient.auth.getSession();
-    if (session) window.location.href = 'dashboard.html';
+    if (session) {
+      const { data: prof } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();
+      window.location.href = (prof && prof.role === 'marketing') ? 'register.html' : 'dashboard.html';
+    }
   })();
 </script>
 </body>

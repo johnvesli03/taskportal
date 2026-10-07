@@ -1,9 +1,23 @@
+/* Hide a protected page until the sign-in/role check finishes, so a
+   marketing user never sees even a flash of the task portal. */
+(function () {
+  try {
+    const open = /(^\/?$|index|404|client-view|reset)/i.test(window.location.pathname);
+    if (!open) {
+      document.documentElement.style.visibility = 'hidden';
+      setTimeout(function () { document.documentElement.style.visibility = ''; }, 6000); // failsafe
+    }
+  } catch (e) {}
+})();
+function openAuthGate() { try { document.documentElement.style.visibility = ''; } catch (e) {} }
+
 // ============================================================
 // Auth helpers shared across every page
 // ============================================================
 
 // Redirects to login if no active session. Returns {user, profile}.
-async function requireAuth() {
+async function requireAuth(opts) {
+  opts = opts || {};
   flushPendingToast();
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
@@ -22,11 +36,55 @@ async function requireAuth() {
     return null;
   }
   window.__currentProfile = profile;
+
+  // Marketing accounts live ONLY in the Follow-Up Register. Any other page
+  // sends them straight back (the database also refuses them the data).
+  if (profile.role === 'marketing' && !opts.register) {
+    try { sessionStorage.setItem('rg-blocked', window.location.pathname); } catch (e) {}
+    window.location.replace('register.html');
+    return null;
+  }
+  // The register is for marketing + admin only.
+  if (opts.register && profile.role !== 'marketing' && profile.role !== 'admin') {
+    window.location.replace('dashboard.html');
+    return null;
+  }
+  startPresence();
+  openAuthGate();
+  if (opts.standalone) {
+    try { if (localStorage.getItem('euodoo-dark-mode') === '1') document.body.classList.add('dark-mode'); } catch (e) {}
+    return { user: session.user, profile };
+  }
   initNotifications();
   initTopBar();
   applyRoleBadge(profile);
   checkDueReminders(profile);
   return { user: session.user, profile };
+}
+
+/* Presence: a light heartbeat while a portal tab is open. The SERVER measures
+   the time between beats, so it can't be inflated from the browser. It counts a
+   tab that is merely open (even in the background) and separately counts the
+   time the tab was actually in front of the person. */
+function startPresence() {
+  if (window.__presenceOn) return;
+  window.__presenceOn = true;
+  let sid = null;
+  try { sid = sessionStorage.getItem('euodoo-sid'); } catch (e) {}
+  if (!sid) {
+    sid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
+    try { sessionStorage.setItem('euodoo-sid', sid); } catch (e) {}
+  }
+  const beat = () => {
+    supabaseClient.rpc('track_presence', {
+      p_session: sid, p_visible: document.visibilityState === 'visible',
+      p_page: (window.location.pathname.split('/').pop() || 'index.html'), p_user_agent: navigator.userAgent
+    }).then(() => {}, () => {});
+  };
+  beat();
+  setInterval(beat, 30000);
+  document.addEventListener('visibilitychange', beat);
+  window.addEventListener('pagehide', beat);
 }
 
 function isAdmin(profile) {
@@ -604,7 +662,8 @@ function attachMentionAutocomplete(textarea, roster) {
    ============================================================ */
 function roleBadgeHtml(profile) {
   const admin = isAdmin(profile);
-  return `<span class="role-badge ${admin ? 'role-badge--admin' : 'role-badge--member'}">${admin ? icon('flag', 11) : icon('check', 11)} ${admin ? 'Admin' : 'Employee'}</span>`;
+  const mkt = profile && profile.role === 'marketing';
+  return `<span class="role-badge ${admin ? 'role-badge--admin' : 'role-badge--member'}">${admin ? icon('flag', 11) : icon('check', 11)} ${admin ? 'Admin' : (mkt ? 'Marketing' : 'Employee')}</span>`;
 }
 
 function applyRoleBadge(profile) {
@@ -614,6 +673,24 @@ function applyRoleBadge(profile) {
   document.querySelectorAll('[data-admin-only]').forEach(n => {
     n.style.display = isAdmin(profile) ? '' : 'none';
   });
+  // Admins get a shortcut to the Marketing Register in every sidebar.
+  const nav = document.querySelector('.portal-sidebar nav');
+  if (nav && isAdmin(profile) && !nav.querySelector('[data-register-link]')) {
+    const a = document.createElement('a');
+    a.className = 'portal-nav-item';
+    a.href = 'register-admin.html';
+    a.setAttribute('data-register-link', '1');
+    a.innerHTML = '<span class="portal-nav-icon">' + icon('flag', 14) + '</span> Marketing Register';
+    nav.appendChild(a);
+  }
+  if (nav && isAdmin(profile) && !nav.querySelector('[data-activity-link]')) {
+    const a2 = document.createElement('a');
+    a2.className = 'portal-nav-item' + (/activity/.test(window.location.pathname) ? ' active' : '');
+    a2.href = 'activity.html';
+    a2.setAttribute('data-activity-link', '1');
+    a2.innerHTML = '<span class="portal-nav-icon">' + icon('clock', 14) + '</span> Activity';
+    nav.appendChild(a2);
+  }
   document.body.classList.toggle('is-admin-user', isAdmin(profile));
   document.body.classList.toggle('is-member-user', !isAdmin(profile));
 }

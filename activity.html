@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity — Euodoo Task Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="icon" type="image/png" href="assets/logo.png">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/portal.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>body{padding:24px;}</style>
+</head>
+<body class="portal-page">
+<script>try{if(localStorage.getItem('euodoo-dark-mode')==='1')document.body.classList.add('dark-mode');if(localStorage.getItem('euodoo-sidebar-collapsed')==='1')document.body.classList.add('sidebar-collapsed');}catch(e){}</script>
+
+
+<div class="portal-shell">
+    <aside class="portal-sidebar">
+        <div class="sidebar-brand-row" style="display:flex;align-items:center;gap:8px;padding:10px 8px 16px;">
+            <img src="assets/logo-mark.png" alt="Euodoo" style="height:26px;" onerror="this.style.display='none'">
+            <span class="sidebar-brand-label" style="color:#f1f2f8;font-weight:700;font-size:.85rem;">Task Portal</span>
+        </div>
+        <nav>
+            <a class="portal-nav-item" href="dashboard.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Dashboard</a>
+            <a class="portal-nav-item" href="projects.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Projects</a>
+            <a class="portal-nav-item" href="tasks.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> My Tasks</a>
+            <a class="portal-nav-item" href="kanban.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/></svg></span> Kanban</a>
+            <a class="portal-nav-item" href="week.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> My Week</a>
+            <a class="portal-nav-item" id="teamLink" href="team.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Team</a>
+            <a class="portal-nav-item" id="workloadLink" href="workload.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Workload</a>
+            <a class="portal-nav-item" id="ganttLink" href="gantt.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="7" y1="14" x2="13" y2="14"/></svg></span> Gantt</a>
+            <a class="portal-nav-item" id="templatesLink" href="templates.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></span> Templates</a>
+        </nav>
+        <div class="portal-sidebar-footer">
+            <div class="portal-who portal-clickable" onclick="openAccountModal()">
+                <div class="portal-who-avatar" id="userAvatar">--</div>
+                <div class="portal-who-text">
+                    <b id="userName">Loading...</b>
+                    <span id="who-designation">—</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="portal-content">
+        <div class="portal-topline">
+            <div>
+                <div class="portal-page-title">Team Activity</div>
+                <div class="portal-page-sub">Sign-ins and time spent in the portal. “Tab open” counts any time the portal is open in a browser tab, even in the background; “In front” counts only the time the tab was actually being looked at.</div>
+            </div>
+            <button class="btn btn-secondary" onclick="exportActivityCSV()">Export CSV</button>
+        </div>
+        <div class="portal-table-wrap" style="padding:16px; margin-bottom:14px;">
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                <div class="portal-field" style="margin:0;"><label>Range</label>
+                    <select class="input-box" id="actRange" onchange="rangeChanged()">
+                        <option value="today">Today</option><option value="yesterday">Yesterday</option><option value="7" selected>Last 7 days</option>
+                        <option value="30">Last 30 days</option><option value="month">This month</option><option value="custom">Custom…</option>
+                    </select></div>
+                <div class="portal-field" style="margin:0;"><label>From</label><input class="input-box" type="date" id="actFrom" onchange="customChanged()"></div>
+                <div class="portal-field" style="margin:0;"><label>To</label><input class="input-box" type="date" id="actTo" onchange="customChanged()"></div>
+                <div class="portal-field" style="margin:0;"><label>Show</label>
+                    <select class="input-box" id="actRole" onchange="renderSummary()"><option value="">Everyone</option><option value="member">Employees</option><option value="marketing">Marketing</option><option value="admin">Admins</option></select></div>
+                <button class="btn btn-secondary" onclick="loadSummary()">Refresh</button>
+                <span class="portal-note" id="actLive" style="margin-left:auto;"></span>
+            </div>
+        </div>
+        <div class="portal-table-wrap" style="padding:16px;">
+            <div id="actList"><p class="portal-note">Loading activity...</p></div>
+        </div>
+    </div>
+</div>
+
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    let rows = [], range = { from: '', to: '' }, open = null;
+    const hm = (s) => { s = Math.max(0, Math.round(s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h}h ${String(m).padStart(2, '0')}m` : (m ? `${m}m` : (s ? '<1m' : '—')); };
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    const dmy = (iso) => iso ? `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}` : '';
+    const tm = (iso) => iso ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '—';
+    const dt = (iso) => iso ? new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'never';
+
+    function computeRange() {
+      const v = document.getElementById('actRange').value; const t = new Date(); t.setHours(0, 0, 0, 0);
+      const back = (n) => { const d = new Date(t); d.setDate(d.getDate() - n); return d; };
+      if (v === 'today') range = { from: ymd(t), to: ymd(t) };
+      else if (v === 'yesterday') range = { from: ymd(back(1)), to: ymd(back(1)) };
+      else if (v === '7') range = { from: ymd(back(6)), to: ymd(t) };
+      else if (v === '30') range = { from: ymd(back(29)), to: ymd(t) };
+      else if (v === 'month') range = { from: ymd(new Date(t.getFullYear(), t.getMonth(), 1)), to: ymd(t) };
+      if (v !== 'custom') { document.getElementById('actFrom').value = range.from; document.getElementById('actTo').value = range.to; }
+    }
+    function rangeChanged() { computeRange(); loadSummary(); }
+    function customChanged() { document.getElementById('actRange').value = 'custom'; range = { from: document.getElementById('actFrom').value, to: document.getElementById('actTo').value }; if (range.from && range.to) loadSummary(); }
+
+    async function loadSummary() {
+      open = null;
+      const { data, error } = await supabaseClient.rpc('admin_activity_summary', { p_from: range.from, p_to: range.to });
+      if (error) { document.getElementById('actList').innerHTML = `<p class="portal-note">Could not load activity: ${escapeHtml(error.message)}<br>Has migration-v25.sql been run?</p>`; return; }
+      rows = data || []; renderSummary();
+    }
+    function renderSummary() {
+      const role = document.getElementById('actRole').value;
+      const list = rows.filter(r => !role || r.role === role);
+      const online = rows.filter(r => r.online).length;
+      document.getElementById('actLive').textContent = `${online} online right now`;
+      const label = (r) => r.role === 'member' ? 'Employee' : r.role;
+      document.getElementById('actList').innerHTML = `<table class="portal-table" style="width:100%;"><thead><tr>
+        <th style="text-align:left">Person</th><th>Sign-ins</th><th>Tab sessions</th><th>Tab open</th><th>In front</th><th>Last seen</th><th></th></tr></thead><tbody>` +
+        list.map(r => `<tr style="cursor:pointer" onclick="toggleDays('${r.user_id}')">
+          <td><b>${escapeHtml(r.name)}</b><br><span class="portal-note" style="font-size:.78rem">${escapeHtml(r.email)} · ${label(r)}</span></td>
+          <td style="text-align:center">${r.logins}</td><td style="text-align:center">${r.sessions}</td>
+          <td style="text-align:center"><b>${hm(r.open_seconds)}</b></td><td style="text-align:center"><b>${hm(r.active_seconds)}</b></td>
+          <td style="text-align:center">${r.online ? '<span class="status-pill status-green">Online now</span>' : escapeHtml(dt(r.last_seen))}</td>
+          <td style="text-align:right">▾</td></tr><tr id="days-${r.user_id}" style="display:none"><td colspan="7" style="background:var(--surface-2, rgba(0,0,0,.03)); padding:10px 16px;"></td></tr>`).join('') + '</tbody></table>';
+    }
+    async function toggleDays(uid) {
+      const row = document.getElementById('days-' + uid); if (!row) return;
+      if (row.style.display !== 'none') { row.style.display = 'none'; return; }
+      row.style.display = ''; const cell = row.firstElementChild; cell.innerHTML = '<span class="portal-note">Loading days...</span>';
+      const { data, error } = await supabaseClient.rpc('admin_activity_days', { p_user: uid, p_from: range.from, p_to: range.to });
+      if (error) { cell.textContent = error.message; return; }
+      cell.innerHTML = `<table class="portal-table" style="width:100%;"><thead><tr><th style="text-align:left">Day</th><th>Sign-ins</th><th>Tab sessions</th><th>First seen</th><th>Last seen</th><th>Tab open</th><th>In front</th></tr></thead><tbody>` +
+        (data || []).map(d => `<tr><td>${dmy(d.day)}</td><td style="text-align:center">${d.logins}</td><td style="text-align:center">${d.sessions}</td><td style="text-align:center">${tm(d.first_seen)}</td><td style="text-align:center">${tm(d.last_seen)}</td><td style="text-align:center">${hm(d.open_seconds)}</td><td style="text-align:center">${hm(d.active_seconds)}</td></tr>`).join('') + '</tbody></table>';
+    }
+    function exportActivityCSV() {
+      const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+      const lines = [['Name', 'Email', 'Role', 'Sign-ins', 'Tab sessions', 'Tab open (min)', 'In front (min)', 'Last seen'].map(q).join(',')]
+        .concat(rows.map(r => [r.name, r.email, r.role, r.logins, r.sessions, Math.round(r.open_seconds / 60), Math.round(r.active_seconds / 60), r.last_seen || ''].map(q).join(',')));
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+      a.download = `activity_${range.from}_to_${range.to}.csv`; a.click();
+    }
+    (async () => {
+      const auth = await requireAuth(); if (!auth) return;
+      if (!isAdmin(auth.profile)) { window.location.replace('dashboard.html'); return; }
+      document.getElementById('userName').textContent = auth.profile.name;
+      document.getElementById('userAvatar').textContent = initials(auth.profile.name);
+      computeRange(); loadSummary(); setInterval(loadSummary, 60000);
+    })();
+</script>
+</body>
+</html>

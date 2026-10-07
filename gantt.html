@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gantt — Euodoo Task Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="icon" type="image/png" href="assets/logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="icon" type="image/png" href="assets/logo.png">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/portal.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -53,6 +53,13 @@
             </div>
             <select id="projectSelect" class="input-box" style="max-width:260px;" onchange="loadGantt()"></select>
         </div>
+        <div class="gantt-legend">
+            <span><i class="lg lg-done"></i> Done</span>
+            <span><i class="lg lg-open"></i> Open</span>
+            <span><i class="lg lg-overdue"></i> Overdue</span>
+            <span><i class="lg lg-today"></i> Today</span>
+            <span class="portal-note">Each marker sits on the item's due date.</span>
+        </div>
         <div class="portal-section">
             <div class="portal-section-head"><h2>Stages</h2></div>
             <div class="portal-table-wrap" style="padding:16px;">
@@ -71,24 +78,52 @@
 <script src="js/supabase-config.js"></script>
 <script src="js/auth.js"></script>
 <script>
-    function dateToDay(d) { return Math.floor(new Date(d + 'T00:00:00').getTime() / 86400000); }
+    // Parse YYYY-MM-DD as a plain calendar day (no timezone drift).
+    function dateToDay(d) {
+      const [y, m, dd] = String(d).slice(0, 10).split('-').map(Number);
+      return Math.round(Date.UTC(y, m - 1, dd) / 86400000);
+    }
+    function dayToLabel(day) {
+      return new Date(day * 86400000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+    }
 
-    function renderGanttRows(container, items, rangeStart, rangeEnd) {
+    function renderGanttRows(container, items, rangeStart, rangeEnd, emptyText) {
+      if (!items.length) {
+        container.innerHTML = `<p class="portal-note">${emptyText}</p>`;
+        return;
+      }
       const span = Math.max(rangeEnd - rangeStart, 1);
-      container.innerHTML = `
-        <div class="gantt-header"><div class="gantt-label"></div><div class="gantt-track"></div></div>
-      ` + items.map(it => {
+      const pctOf = (day) => Math.min(100, Math.max(0, ((day - rangeStart) / span) * 100));
+      const today = dateToDay(todayISO());
+      const todayPct = pctOf(today);
+
+      // Date labels along the top — about 6-8 evenly spaced ticks.
+      const steps = [1, 2, 3, 5, 7, 14, 30, 60, 90];
+      const step = steps.find(n => span / n <= 8) || 90;
+      let ticks = '';
+      for (let d = rangeStart; d <= rangeEnd; d += step) {
+        ticks += `<span class="gantt-tick" style="left:${pctOf(d)}%;">${dayToLabel(d)}</span>`;
+      }
+
+      const rows = items.map(it => {
         const day = dateToDay(it.due_date);
-        const pct = Math.min(100, Math.max(0, ((day - rangeStart) / span) * 100));
-        const cls = it.status === 'done' ? 'is-done' : (dateToDay(todayISO()) > day ? 'is-overdue' : '');
+        const pct = pctOf(day);
+        const cls = it.status === 'done' ? 'is-done' : (today > day ? 'is-overdue' : '');
+        const labelSide = pct > 85 ? 'is-left' : '';
         return `
           <div class="gantt-row">
             <div class="gantt-label" title="${escapeHtml(it.label)}">${escapeHtml(it.label)}</div>
             <div class="gantt-track">
-              <div class="gantt-bar ${cls}" style="left:calc(${pct}% - 4px); width:8px;" title="${escapeHtml(it.label)} — due ${it.due_date}"></div>
+              <div class="gantt-today" style="left:${todayPct}%;"></div>
+              <div class="gantt-bar ${cls}" style="left:calc(${pct}% - 5px);" title="${escapeHtml(it.label)} — due ${it.due_date}"></div>
+              <span class="gantt-date ${labelSide}" style="left:calc(${pct}% ${pct > 85 ? '- ' : '+ '}16px);">${dayToLabel(day)}</span>
             </div>
           </div>`;
-      }).join('') || `<p class="portal-note">Nothing with a due date yet.</p>`;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="gantt-header"><div class="gantt-label"></div><div class="gantt-axis">${ticks}</div></div>
+        ${rows}`;
     }
 
     async function loadGantt() {
@@ -106,8 +141,8 @@
       const rangeStart = allDates.length ? Math.min(today, ...allDates) - 2 : today - 2;
       const rangeEnd = allDates.length ? Math.max(today, ...allDates) + 2 : today + 30;
 
-      renderGanttRows(document.getElementById('ganttStages'), stageItems, rangeStart, rangeEnd);
-      renderGanttRows(document.getElementById('ganttTasks'), taskItems, rangeStart, rangeEnd);
+      renderGanttRows(document.getElementById('ganttStages'), stageItems, rangeStart, rangeEnd, 'No stage in this project has a target date yet. Add one from the project page (the date field next to "Add Stage").');
+      renderGanttRows(document.getElementById('ganttTasks'), taskItems, rangeStart, rangeEnd, 'No task in this project has a due date yet.');
     }
 
     async function loadProjects() {

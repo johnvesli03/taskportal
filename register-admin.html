@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketing Register — Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="icon" type="image/png" href="assets/logo.png">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/portal.css">
+    <link rel="stylesheet" href="css/register.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="rg-body">
+<script>try{if(localStorage.getItem('euodoo-dark-mode')==='1')document.body.classList.add('dark-mode');}catch(e){}</script>
+
+<header class="rg-header">
+    <div class="rg-brand"><img src="assets/logo-mark.png" alt="" onerror="this.style.display='none'"><span class="t">Marketing Register</span><small>ADMIN</small></div>
+    <nav class="rg-tabs" id="rgTabs">
+        <button class="rg-tab active" data-tab="register">Register</button>
+        <button class="rg-tab" data-tab="approvals">Approvals <span class="rg-count" id="apCount" style="display:none">0</span></button>
+        <button class="rg-tab" data-tab="dashboard">Dashboard</button>
+        <button class="rg-tab" data-tab="columns">Columns &amp; lists</button>
+        <button class="rg-tab" data-tab="audit">Audit log</button>
+        <button class="rg-tab" data-tab="access">Access</button>
+    </nav>
+    <div class="rg-spacer"></div>
+    <a class="rg-iconbtn" href="dashboard.html" style="text-decoration:none">← Task Portal</a>
+    <button class="rg-iconbtn" onclick="toggleDarkMode()" title="Toggle dark mode">◐</button>
+    <button class="rg-iconbtn" onclick="requestLogout()">Sign out</button>
+</header>
+
+<main class="rg-main">
+    <section class="rg-panel active" id="p-register"><div id="regMount"></div></section>
+    <section class="rg-panel" id="p-approvals"></section>
+    <section class="rg-panel" id="p-dashboard"></section>
+    <section class="rg-panel" id="p-columns"></section>
+    <section class="rg-panel" id="p-audit"></section>
+    <section class="rg-panel" id="p-access"></section>
+</main>
+
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/register.js"></script>
+<script src="js/register-admin.js"></script>
+</body>
+</html>

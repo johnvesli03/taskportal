@@ -109,6 +109,7 @@
         <select class="input-box" id="newUserRole">
           <option value="member" selected>Employee</option>
           <option value="admin">Admin</option>
+          <option value="marketing">Marketing (Follow-Up Register only)</option>
         </select>
       </div>
       <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" id="addUserSubmitBtn">Add Person</button>
@@ -158,7 +159,7 @@
       // promote to Admin if that was selected. The profile row itself was
       // auto-created by the on-signup trigger with role="member" by default.
       const patch = { employee_id: employeeId };
-      if (role === 'admin') patch.role = 'admin';
+      if (role === 'admin' || role === 'marketing') patch.role = role;
       const { error: patchErr } = await supabaseClient.from('profiles').update(patch).eq('id', data.user.id);
       if (patchErr) throw new Error('Account created, but could not finish setup: ' + patchErr.message);
 
@@ -177,11 +178,17 @@
     }
   });
 
-  async function toggleRole(id, currentRole) {
-    const newRole = currentRole === 'admin' ? 'member' : 'admin';
-    if (!(await customConfirm(`Change this person's role to "${newRole}"?`, { confirmText: 'Change role' }))) return;
-    const { error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', id);
-    if (error) { await customAlert('Could not update role: ' + error.message, { title: 'Something went wrong', danger: true }); return; }
+  async function changeRole(id, currentRole, newRole, selectEl) {
+    if (newRole === currentRole) return;
+    const names = { member: 'Employee', admin: 'Admin', marketing: 'Marketing (Follow-Up Register only)' };
+    const warn = newRole === 'marketing' ? '\n\nThey will only be able to open the Follow-Up Register — no tasks, projects or team.' : (newRole === 'admin' ? '\n\nAdmins can see and change everything.' : '');
+    if (!(await customConfirm(`Change this person's role to ${names[newRole]}?${warn}`, { confirmText: 'Change role' }))) { if (selectEl) selectEl.value = currentRole; return; }
+    const { data, error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', id).select('id');
+    if (error || !data || !data.length) {
+      await customAlert('Could not update role: ' + (error ? error.message : 'you may not have permission.'), { title: 'Something went wrong', danger: true });
+      if (selectEl) selectEl.value = currentRole; return;
+    }
+    showToast('success', 'Role updated', `Now: ${names[newRole]}.`);
     loadTeam();
   }
 
@@ -225,8 +232,12 @@
           <button class="portal-icon-btn" title="Edit Employee ID" onclick="editEmployeeId('${p.id}', ${p.employee_id ? `'${escapeHtml(p.employee_id).replace(/'/g,"\\'")}'` : 'null'})">${icon('edit', 12)}</button>
         </td>
         <td style="text-align:right; white-space:nowrap;">
-          <span class="status-pill ${p.role === 'admin' ? 'status-blue' : 'status-muted'}">${p.role}</span>
-          ${p.id !== currentProfile.id ? `<button class="btn btn-secondary" style="padding:6px 12px; font-size:12px; margin-left:8px;" onclick="toggleRole('${p.id}', '${p.role}')">Make ${p.role === 'admin' ? 'Member' : 'Admin'}</button>` : ''}
+          <span class="status-pill ${p.role === 'admin' ? 'status-blue' : (p.role === 'marketing' ? 'status-gold' : 'status-muted')}">${p.role === 'member' ? 'Employee' : p.role}</span>
+          ${p.id !== currentProfile.id ? `<select class="input-box" style="width:auto; display:inline-block; padding:6px 10px; font-size:12px; margin-left:8px;" onchange="changeRole('${p.id}', '${p.role}', this.value, this)" title="Change role">
+            <option value="member" ${p.role === 'member' ? 'selected' : ''}>Employee</option>
+            <option value="marketing" ${p.role === 'marketing' ? 'selected' : ''}>Marketing</option>
+            <option value="admin" ${p.role === 'admin' ? 'selected' : ''}>Admin</option>
+          </select>` : ''}
         </td>
       </tr>
     `).join('') + `</tbody></table>`;
