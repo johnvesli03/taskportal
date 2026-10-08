@@ -119,7 +119,7 @@ const RegisterApp = (() => {
   /* ---------- follow-up state ---------- */
   function fuState(r) {
     const t = today(); let overdue = false, due = false, next = '';
-    if (r.outcome || r.deleted_at) return { overdue, due, next };
+    if ((r.outcome && r.outcome !== 'Prospective') || r.deleted_at) return { overdue, due, next };   // a 'Prospective' lead still needs follow-ups
     for (let n = 1; n <= 3; n++) {
       const d = r['f' + n + '_date'];
       if (d && !r['f' + n + '_remarks']) {
@@ -169,18 +169,20 @@ const RegisterApp = (() => {
 
   /* ---------- load ---------- */
   async function loadAll() {
-    const [rows, cols, sets, people, perm] = await Promise.all([
+    const [rows, cols, sets, people, perm, imp] = await Promise.all([
       sb().from('follow_up_register').select('*').order('created_at', { ascending: false }).limit(5000),
       sb().from('register_columns').select('*').order('position'),
       sb().from('register_settings').select('key, options'),
       sb().from('profiles').select('id, name, role'),
-      S.admin ? Promise.resolve({ data: null }) : sb().from('register_user_perms').select('can_download').eq('user_id', S.me).maybeSingle()
+      S.admin ? Promise.resolve({ data: null }) : sb().from('register_user_perms').select('can_download').eq('user_id', S.me).maybeSingle(),
+      S.admin ? Promise.resolve({ data: null }) : sb().from('register_import_status').select('user_id').eq('user_id', S.me).maybeSingle()
     ]);
     if (rows.error) throw rows.error;
     S.rows = rows.data || [];
     S.cols = cols.data || [];
     S.opts = {}; (sets.data || []).forEach(s => { S.opts[s.key] = s.options || []; });
     S.people = {}; S.peopleList = (people.data || []); S.peopleList.forEach(p => { S.people[p.id] = p.name; });
+    S.importUsed = S.admin ? true : !!(imp && imp.data);   // marketing: true once their one-time import has been used
     S.perms.can_save = S.admin ? true : (perm.data ? perm.data.can_download : true);   // the stored switch now means 'can save reports'
     buildFields();
   }
@@ -327,6 +329,7 @@ const RegisterApp = (() => {
     const el = e.target; if (!el.dataset || !el.dataset.k) return;
     if ((e.key === 'Enter' && el.tagName !== 'TEXTAREA') || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       if (el.tagName === 'SELECT' && e.key !== 'Enter') return;
+      if ((el.type === 'date' || el.type === 'datetime-local') && e.key !== 'Enter') return;   // arrows change the date there
       e.preventDefault();
       const td = el.closest('td'), tr = td.parentElement; const col = Array.prototype.indexOf.call(tr.children, td);
       let t = (e.key === 'ArrowUp') ? tr.previousElementSibling : tr.nextElementSibling;
@@ -622,7 +625,7 @@ const RegisterApp = (() => {
       ${S.admin ? '<button class="rg-btn" data-act="xlsx">⬇ Excel</button><button class="rg-btn" data-act="pdf">⬇ PDF</button>' : ''}
       <button class="rg-btn" data-act="report" ${S.perms.can_save ? '' : 'disabled title="Saving reports is switched off for your account"'}>Save as report</button>
       <button class="rg-btn" data-act="reports">Saved reports</button>
-      ${S.admin ? '<button class="rg-btn" data-act="import">⬆ Import Excel</button>' : ''}
+      ${S.admin ? '<button class="rg-btn" data-act="import">⬆ Import Excel</button>' : (S.importUsed ? '' : '<button class="rg-btn" data-act="import1" title="Works only once">⬆ One-time Excel import</button>')}
     </div>`;
   }
   function wireToolbar() {
@@ -640,66 +643,155 @@ const RegisterApp = (() => {
     if ($('fDeleted')) $('fDeleted').onchange = (e) => { S.f.showDeleted = e.target.value === '1'; apply(); };
   }
 
-  /* ---------- import (admin) ---------- */
+  /* ---------- Excel import ---------- */
+  // Reads the first sheet and maps columns by their headings (works with the original Follow-Up Register sheet).
+  const toISO = (v) => {
+    if (v == null || v === '') return null;
+    if (v instanceof Date) return isNaN(v) ? null : ymd(new Date(v.getTime() + 12 * 36e5));
+    const s = String(v).trim(); let x;
+    if ((x = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return `${x[1]}-${x[2]}-${x[3]}`;
+    if ((x = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/))) return `${x[3]}-${pad(x[2])}-${pad(x[1])}`;
+    return null;
+  };
+  // "10.30 am on 07-10-2026" -> ISO timestamp (India time)
+  const toStamp = (v) => {
+    if (v instanceof Date) return isNaN(v) ? null : v.toISOString();
+    const s = String(v || '').trim(); if (!s) return null;
+    const d = s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/); if (!d) return null;
+    const t = s.match(/(\d{1,2})[.:](\d{2})\s*(am|pm)?/i);
+    let hh = t ? parseInt(t[1], 10) : 0; const mm = t ? t[2] : '00';
+    if (t && t[3]) { const pm = /pm/i.test(t[3]); if (pm && hh < 12) hh += 12; if (!pm && hh === 12) hh = 0; }
+    return `${d[3]}-${pad(d[2])}-${pad(d[1])}T${pad(hh)}:${mm}:00+05:30`;
+  };
+  async function parseImportFile(file) {
+    if (!window.XLSX) throw new Error('The Excel library could not be loaded. Check your connection and refresh.');
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' });
+    const head = (aoa[0] || []).map(h => String(h).trim().toLowerCase());
+    const map = {}; let remarkN = 0;
+    head.forEach((h, i) => {
+      if (/^date$/.test(h)) map.lead_date = i; else if (/^time$/.test(h)) map.lead_time = i; else if (/client/.test(h)) map.client_name = i;
+      else if (/company/.test(h)) map.company = i; else if (/^mobile/.test(h)) map.mobile = i; else if (/landline/.test(h)) map.landline = i;
+      else if (/^email$/.test(h)) map.email = i; else if (/lead source/.test(h)) map.lead_source = i; else if (/introductory/.test(h)) map.intro_email_sent = i;
+      else if (/^date\s*&\s*time/.test(h)) map.intro_email_at = i;
+      else if (/current status/.test(h)) map.current_status = i; else if (/discussion|notes/.test(h)) map.last_notes = i;
+      else if (/1st.*date/.test(h)) map.f1_date = i; else if (/2nd.*date/.test(h)) map.f2_date = i; else if (/3rd.*date/.test(h)) map.f3_date = i;
+      else if (/remarks/.test(h)) { remarkN++; if (remarkN <= 3) map['f' + remarkN + '_remarks'] = i; }
+      else if (/outcome/.test(h)) map.outcome = i;
+    });
+    if (map.client_name == null || map.mobile == null) throw new Error('Could not find the “Client Name” and “Mobile No” columns in the first row. Please use the register’s column headings.');
+    const outcomes = (S.opts.outcome || []).map(x => x.toLowerCase());
+    const rows = aoa.slice(1).map((r, idx) => ({ r, line: idx + 2 })).filter(x => x.r.some(c => String(c).trim() !== '')).map(({ r, line }) => {
+      const g = (k) => map[k] == null ? '' : r[map[k]];
+      let mob = g('mobile'); mob = (typeof mob === 'number') ? String(Math.round(mob)) : String(mob).replace(/\.0$/, '').trim();
+      const o = { __line: line, client_name: String(g('client_name')).trim(), company: String(g('company')).trim() || null, mobile: mob,
+        landline: String(g('landline')).trim() || null, email: String(g('email')).trim() || null, lead_source: String(g('lead_source')).trim() || null,
+        lead_time: String(g('lead_time')).trim() || null, intro_email_sent: /^y/i.test(String(g('intro_email_sent'))) ? 'Yes' : 'No',
+        intro_email_at: toStamp(g('intro_email_at')), current_status: String(g('current_status')).trim() || null,
+        last_notes: String(g('last_notes')).trim() || null, outcome: String(g('outcome')).trim() || null };
+      const ld = toISO(g('lead_date')); if (ld) o.lead_date = ld;
+      for (let n = 1; n <= 3; n++) { o['f' + n + '_date'] = toISO(g('f' + n + '_date')); o['f' + n + '_remarks'] = String(g('f' + n + '_remarks')).trim() || null; }
+      // In the original sheet the outcome ("Prospective / Agreement / Not interested") is typed in the last Remarks cell.
+      if (!o.outcome) for (let n = 3; n >= 1; n--) {
+        const rem = o['f' + n + '_remarks']; const i = rem ? outcomes.indexOf(rem.toLowerCase()) : -1;
+        if (i >= 0) { o.outcome = S.opts.outcome[i]; o['f' + n + '_remarks'] = null; break; }
+      }
+      return o;
+    });
+    return rows;
+  }
+  // the same checks the database applies, so people see problems BEFORE anything is saved
+  function checkImportRow(o, seen) {
+    const dropdown = (k, key, label) => { const v = o[k]; if (v && !(S.opts[key] || []).includes(v)) return `${label} “${v}” is not in the allowed list`; return ''; };
+    if (!o.client_name) return 'Client name is missing';
+    const digits = o.mobile.replace(/\D/g, '');
+    if (!/^\d{10,13}$/.test(digits)) return 'Mobile number must have 10 to 13 digits';
+    const key = digits.slice(-10);
+    if (seen.has(key)) return 'Same mobile number appears earlier in the file';
+    if (S.rows.some(r => !r.deleted_at && String(r.mobile).replace(/\D/g, '').slice(-10) === key)) return 'Mobile number is already in the register';
+    if (o.landline && !/^[0-9+\-\s()]{6,20}$/.test(o.landline)) return 'Landline looks invalid';
+    if (o.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email)) return 'Email looks invalid';
+    const bad = dropdown('lead_source', 'lead_source', 'Lead source') || dropdown('current_status', 'current_status', 'Status') || dropdown('lead_time', 'time_slot', 'Time') || dropdown('outcome', 'outcome', 'Outcome');
+    if (bad) return bad;
+    let prev = o.lead_date || today();
+    if (o.lead_date && o.lead_date > today()) return 'Date is in the future';
+    for (let n = 1; n <= 3; n++) {
+      const d = o['f' + n + '_date'];
+      if (!d) { if (o['f' + n + '_remarks']) return `Follow-up ${n} remarks have no date`; continue; }
+      if (n > 1 && !o['f' + (n - 1) + '_date']) return `Follow-up ${n} is filled but follow-up ${n - 1} is empty`;
+      if (d < prev) return `Follow-up ${n} date is before the previous date`;
+      prev = d;
+    }
+    seen.add(key); return '';
+  }
+  function importPreviewHtml(parsed, probs) {
+    const bad = probs.filter(Boolean).length;
+    const list = parsed.map((o, i) => probs[i] ? `<tr><td>${o.__line}</td><td>${esc(o.client_name || '—')}</td><td>${esc(o.mobile)}</td><td style="color:var(--rg-bad)">${esc(probs[i])}</td></tr>` : '').filter(Boolean).slice(0, 40).join('');
+    return `<p><b>${parsed.length}</b> rows found · <b style="color:var(--rg-ok)">${parsed.length - bad}</b> ready to import${bad ? ` · <b style="color:var(--rg-bad)">${bad}</b> will be left out` : ''}.</p>
+      ${bad ? `<div style="overflow:auto;max-height:200px"><table class="rg-table"><thead><tr><th>Excel row</th><th>Client</th><th>Mobile</th><th>Problem</th></tr></thead><tbody>${list}</tbody></table></div>${bad > 40 ? `<small>…and ${bad - 40} more</small>` : ''}` : ''}`;
+  }
+
+  // Admin import — unlimited, assigned to any marketing user
   function openImport() {
     const people = S.peopleList.filter(p => p.role === 'marketing' || p.role === 'admin');
     const m = modal(`<h3>Import leads from Excel / CSV</h3>
-      <p class="sub">Use the same headings as the register (Date, Time, Client Name, Company Name &amp; Address, Mobile No, Landline, Email, Lead Source, Introductory Email Sent, Current Status, Last Discussion Notes, 1st/2nd/3rd Follow-Up Date and Remarks). You will see a preview before anything is saved.</p>
+      <p class="sub">Use the same headings as the register. A preview shows any problems before anything is saved.</p>
       <div class="rg-form"><label>File<input type="file" id="imFile" accept=".xlsx,.xls,.csv"></label>
       <label>Assign imported leads to<select id="imOwner">${people.map(p => `<option value="${p.id}">${esc(p.name)} (${p.role})</option>`).join('')}</select></label></div>
       <div id="imPreview" style="margin-top:14px"></div>
       <div class="rg-modal-actions"><button class="rg-btn" data-close>Close</button><button class="rg-btn primary" id="imGo" disabled>Import</button></div>`);
-    let parsed = [];
-    const toISO = (v) => {
-      if (v == null || v === '') return null;
-      if (v instanceof Date) return ymd(new Date(v.getTime() + 12 * 36e5));
-      const s = String(v).trim(); let x;
-      if ((x = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return `${x[1]}-${x[2]}-${x[3]}`;
-      if ((x = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/))) return `${x[3]}-${pad(x[2])}-${pad(x[1])}`;
-      return null;
-    };
+    let parsed = [], probs = [];
     m.querySelector('#imFile').onchange = async (e) => {
       const file = e.target.files[0]; if (!file) return;
-      if (!window.XLSX) { await customAlert('Excel library not loaded.'); return; }
-      const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
-      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' });
-      const head = (aoa[0] || []).map(h => String(h).trim().toLowerCase());
-      const map = {}; let remarkN = 0;
-      head.forEach((h, i) => {
-        if (/^date$/.test(h)) map.lead_date = i; else if (/^time$/.test(h)) map.lead_time = i; else if (/client/.test(h)) map.client_name = i;
-        else if (/company/.test(h)) map.company = i; else if (/^mobile/.test(h)) map.mobile = i; else if (/landline/.test(h)) map.landline = i;
-        else if (/^email$/.test(h)) map.email = i; else if (/lead source/.test(h)) map.lead_source = i; else if (/introductory/.test(h)) map.intro_email_sent = i;
-        else if (/current status/.test(h)) map.current_status = i; else if (/discussion|notes/.test(h)) map.last_notes = i;
-        else if (/1st.*date/.test(h)) map.f1_date = i; else if (/2nd.*date/.test(h)) map.f2_date = i; else if (/3rd.*date/.test(h)) map.f3_date = i;
-        else if (/remarks/.test(h)) { remarkN++; if (remarkN <= 3) map['f' + remarkN + '_remarks'] = i; }
-        else if (/outcome/.test(h)) map.outcome = i;
-      });
-      parsed = aoa.slice(1).filter(r => r.some(c => String(c).trim() !== '')).map(r => {
-        const g = (k) => map[k] == null ? '' : r[map[k]];
-        const o = { client_name: String(g('client_name')).trim(), company: String(g('company')).trim() || null, mobile: String(g('mobile')).replace(/\.0$/, '').trim(),
-          landline: String(g('landline')).trim() || null, email: String(g('email')).trim() || null, lead_source: String(g('lead_source')).trim() || null, lead_time: String(g('lead_time')).trim() || null,
-          intro_email_sent: /^y/i.test(String(g('intro_email_sent'))) ? 'Yes' : 'No', current_status: String(g('current_status')).trim() || null, last_notes: String(g('last_notes')).trim() || null,
-          outcome: String(g('outcome')).trim() || null };
-        const ld = toISO(g('lead_date')); if (ld) o.lead_date = ld;
-        for (let n = 1; n <= 3; n++) { o['f' + n + '_date'] = toISO(g('f' + n + '_date')); o['f' + n + '_remarks'] = String(g('f' + n + '_remarks')).trim() || null; }
-        return o;
-      });
-      const bad = parsed.filter(o => !o.client_name || !/^\d{10,13}$/.test(o.mobile.replace(/\D/g, ''))).length;
-      m.querySelector('#imPreview').innerHTML = `<p><b>${parsed.length}</b> rows found${bad ? `, <b style="color:var(--rg-bad)">${bad}</b> look invalid (missing name or a bad mobile) and will be reported` : ''}.</p>
-        <div style="overflow:auto;max-height:240px"><table class="rg-table"><thead><tr><th>Client</th><th>Company</th><th>Mobile</th><th>Source</th><th>1st follow-up</th></tr></thead><tbody>
-        ${parsed.slice(0, 8).map(o => `<tr><td>${esc(o.client_name)}</td><td>${esc(o.company)}</td><td>${esc(o.mobile)}</td><td>${esc(o.lead_source)}</td><td>${esc(dmy(o.f1_date))}</td></tr>`).join('')}</tbody></table></div>`;
-      m.querySelector('#imGo').disabled = !parsed.length;
+      try { parsed = await parseImportFile(file); } catch (err) { await customAlert(err.message, { title: 'Cannot read the file' }); return; }
+      const seen = new Set(); probs = parsed.map(o => checkImportRow(o, seen));
+      m.querySelector('#imPreview').innerHTML = importPreviewHtml(parsed, probs);
+      m.querySelector('#imGo').disabled = !probs.some(x => !x);
     };
     m.querySelector('#imGo').onclick = async (e) => {
       const owner = m.querySelector('#imOwner').value; e.target.disabled = true; e.target.textContent = 'Importing…';
       let ok = 0; const fails = [];
-      for (const o of parsed) {
+      for (let i = 0; i < parsed.length; i++) {
+        if (probs[i]) { fails.push(`Row ${parsed[i].__line} (${parsed[i].client_name || 'no name'}) — ${probs[i]}`); continue; }
+        const o = Object.assign({}, parsed[i]); delete o.__line;
         const { error } = await sb().from('follow_up_register').insert(Object.assign({}, o, { assigned_to: owner, created_by: S.me }));
-        if (error) fails.push(`${o.client_name || '(no name)'} — ${nice(error.message)}`); else ok++;
+        if (error) fails.push(`Row ${parsed[i].__line} (${parsed[i].client_name || 'no name'}) — ${nice(error.message)}`); else ok++;
       }
       m.remove(); await reload();
       showToast(fails.length ? 'warning' : 'success', 'Import finished', `${ok} imported, ${fails.length} skipped.`);
       if (fails.length) await customAlert('Skipped rows:\n\n• ' + fails.slice(0, 15).join('\n• ') + (fails.length > 15 ? `\n…and ${fails.length - 15} more` : ''), { title: 'Some rows were not imported' });
+    };
+  }
+
+  // Marketing import — works exactly ONCE per person, enforced by the database
+  function openOneTimeImport() {
+    const m = modal(`<h3>One-time Excel import</h3>
+      <p class="sub">Bring your existing Follow-Up Register sheet into the portal. <b>You can do this only once.</b> Afterwards this option disappears and only an admin can re-open it. Check the preview carefully.</p>
+      <div class="rg-form"><label class="wide">Excel / CSV file (first sheet, headings in row 1)<input type="file" id="imFile" accept=".xlsx,.xls,.csv"></label></div>
+      <div id="imPreview" style="margin-top:14px"></div>
+      <div class="rg-modal-actions"><button class="rg-btn" data-close>Cancel</button><button class="rg-btn primary" id="imGo" disabled>Import now (one time)</button></div>`);
+    let parsed = [], probs = [];
+    m.querySelector('#imFile').onchange = async (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      try { parsed = await parseImportFile(file); } catch (err) { await customAlert(err.message, { title: 'Cannot read the file' }); return; }
+      if (parsed.length > 2000) { await customAlert('A one-time import can have at most 2000 rows. Please split off the rest and add those leads normally.', { title: 'Too many rows' }); parsed = []; return; }
+      const seen = new Set(); probs = parsed.map(o => checkImportRow(o, seen));
+      m.querySelector('#imPreview').innerHTML = importPreviewHtml(parsed, probs);
+      m.querySelector('#imGo').disabled = !probs.some(x => !x);
+    };
+    m.querySelector('#imGo').onclick = async (e) => {
+      const good = parsed.filter((o, i) => !probs[i]); const left = parsed.length - good.length;
+      if (!(await customConfirm(`This is your ONE-TIME import.\n\n• ${good.length} lead(s) will be added\n• ${left} row(s) will be left out (you can add those by hand afterwards)\n\nAfter this the import option is switched off for your account. Continue?`, { confirmText: 'Import now', danger: true }))) return;
+      e.target.disabled = true; e.target.textContent = 'Importing…';
+      const payload = good.map(o => { const c = Object.assign({}, o); delete c.__line; return c; });
+      const { data, error } = await sb().rpc('register_import_leads', { p_rows: payload });
+      if (error) { e.target.disabled = false; e.target.textContent = 'Import now (one time)'; await customAlert(nice(error.message), { title: 'Import failed', danger: true }); return; }
+      m.remove(); S.importUsed = true; await reload();
+      const serverSkipped = (data.skipped || []).map(x => `Row ${good[x.row - 1] ? good[x.row - 1].__line : x.row} — ${nice(x.reason)}`);
+      const clientSkipped = parsed.map((o, i) => probs[i] ? `Row ${o.__line} (${o.client_name || 'no name'}) — ${probs[i]}` : '').filter(Boolean);
+      const all = clientSkipped.concat(serverSkipped);
+      showToast('success', 'Import complete', `${data.imported} lead(s) added. The import option is now switched off.`);
+      if (all.length) await customAlert(`${data.imported} added. These rows were left out, add them by hand if needed:\n\n• ` + all.slice(0, 20).join('\n• ') + (all.length > 20 ? `\n…and ${all.length - 20} more` : ''), { title: 'Import finished' });
     };
   }
 
@@ -710,6 +802,13 @@ const RegisterApp = (() => {
     S.errors = {};
     const tb = document.getElementById('rgToolbar'); if (tb) { tb.innerHTML = toolbarHtml(); wireToolbar(); }
     render();
+  }
+  // keeps the grid current when other people save, but never while you have unsaved edits or a box focused
+  async function refreshQuiet() {
+    if (document.visibilityState !== 'visible' || dirtyIds().length || S.saving) return;
+    if (document.querySelector('.rg-modal-back, .premium-modal.is-open, #rgMenu')) return;
+    const a = document.activeElement; if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
+    try { await loadAll(); render(); } catch (e) {}
   }
   async function init(opts) {
     S.admin = !!opts.admin; S.profile = opts.profile; S.me = opts.profile.id; S.mount = document.getElementById(opts.mountId);
@@ -731,8 +830,9 @@ const RegisterApp = (() => {
       if (a === 'add') addLead(); else if (a === 'menu') openMenu(t, t.dataset.id);
       else if (a === 'prev') { S.page--; render(); } else if (a === 'next') { S.page++; render(); }
       else if (a === 'xlsx') downloadExcel(); else if (a === 'pdf') downloadPdf(); else if (a === 'report') saveReport();
-      else if (a === 'reports') openReports(); else if (a === 'import') openImport();
+      else if (a === 'reports') openReports(); else if (a === 'import') openImport(); else if (a === 'import1') { if (!S.importUsed) openOneTimeImport(); }
     });
+    setInterval(refreshQuiet, 120000);
     document.getElementById('rgSaveBtn').onclick = saveAll; document.getElementById('rgDiscardBtn').onclick = discardAll;
     document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveAll(); } });
     document.addEventListener('click', (e) => { if (!e.target.closest('#rgMenu') && !e.target.closest('[data-act="menu"]')) closeMenu(); });

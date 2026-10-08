@@ -167,10 +167,10 @@ const AdminReg = (() => {
   const audit = { rows: [], done: false };
   async function renderAudit(reset) {
     const el = document.getElementById('p-audit');
-    if (reset) {
-      audit.rows = []; audit.done = false;
+    if (reset) { audit.rows = []; audit.done = false; }
+    if (!el.querySelector('#auGo')) {
       el.innerHTML = `<div class="rg-toolbar">
-        <label class="rg-field"><span>Action</span><select id="auAction"><option value="">All</option>${['insert', 'update', 'delete', 'restore', 'download', 'report', 'config', 'blocked'].map(a => `<option>${a}</option>`).join('')}</select></label>
+        <label class="rg-field"><span>Action</span><select id="auAction"><option value="">All</option>${['insert', 'update', 'delete', 'restore', 'download', 'report', 'config', 'blocked', 'import'].map(a => `<option>${a}</option>`).join('')}</select></label>
         <label class="rg-field"><span>User</span><select id="auUser"><option value="">Everyone</option>${RegisterApp.state.peopleList.filter(p => p.role !== 'member').map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>
         <label class="rg-field"><span>From</span><input type="date" id="auFrom"></label><label class="rg-field"><span>To</span><input type="date" id="auTo"></label>
         <button class="rg-btn primary" id="auGo">Apply</button><button class="rg-btn" id="auXlsx">⬇ Excel</button></div>
@@ -179,37 +179,56 @@ const AdminReg = (() => {
       el.querySelector('#auXlsx').onclick = () => { if (!window.XLSX) return; const rows = audit.rows.map(a => [a.at, a.user_name, a.action, a.field, a.old_value, a.new_value]); const ws = XLSX.utils.aoa_to_sheet([['When', 'User', 'Action', 'Field', 'Was', 'Now']].concat(rows)); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Audit'); XLSX.writeFile(wb, 'Register_Audit_' + todayISO() + '.xlsx'); };
       el.querySelector('#auMore').onclick = () => renderAudit(false);
     }
-    const q = sb().from('register_audit').select('*').order('id', { ascending: false }).range(audit.rows.length, audit.rows.length + 199);
     const v = (id) => el.querySelector('#' + id).value;
-    if (v('auAction')) q.eq('action', v('auAction')); if (v('auUser')) q.eq('user_id', v('auUser'));
-    if (v('auFrom')) q.gte('at', v('auFrom') + 'T00:00:00'); if (v('auTo')) q.lte('at', v('auTo') + 'T23:59:59');
+    let q = sb().from('register_audit').select('*').order('id', { ascending: false });
+    if (v('auAction')) q = q.eq('action', v('auAction'));
+    if (v('auUser')) q = q.eq('user_id', v('auUser'));
+    if (v('auFrom')) q = q.gte('at', v('auFrom') + 'T00:00:00+05:30');
+    if (v('auTo')) q = q.lte('at', v('auTo') + 'T23:59:59+05:30');
+    q = q.range(audit.rows.length, audit.rows.length + 199);
     const { data, error } = await q;
     if (error) { el.querySelector('#auTable').innerHTML = `<tr><td>${esc(error.message)}</td></tr>`; return; }
     audit.rows = audit.rows.concat(data || []); audit.done = (data || []).length < 200;
     const S = RegisterApp.state; const lead = (id) => { const r = RegisterApp.rows().find(x => x.id === id); return r ? r.client_name : ''; };
     const fl = (k) => { if (!k) return ''; if (k.startsWith('extra:')) { const c = S.cols.find(c => c.key === k.slice(6)); return c ? c.label : k; } const f = S.fields.find(f => f.k === k); return f ? f.label : k; };
     const dt = (a) => { const d = new Date(a.at); return d.toLocaleString('en-GB'); };
-    const detail = (a) => a.action === 'download' ? `${a.field} · ${a.detail ? a.detail.rows + ' rows' : ''} ${a.detail && a.detail.from ? `(${dmy(a.detail.from)} → ${dmy(a.detail.to)})` : ''}`
-      : a.action === 'report' ? `“${a.field}” · ${a.detail ? a.detail.rows : ''} rows` : a.action === 'config' ? (a.field === 'register_columns' ? 'column “' + esc((a.detail || {}).label) + '” ' + ((a.detail || {}).archived ? '(archived)' : '') : 'dropdown list “' + esc((a.detail || {}).key) + '”') : a.action === 'insert' ? `new lead ${esc((a.detail || {}).mobile || '')}` : '';
+    const detail = (a) => {
+      const d = a.detail || {};
+      if (a.action === 'download') return `${esc(a.field)} · ${esc(d.rows)} rows ${d.from ? `(${esc(dmy(d.from))} → ${esc(dmy(d.to))})` : ''}`;
+      if (a.action === 'report') return `“${esc(a.field)}” · ${esc(d.rows)} rows`;
+      if (a.action === 'config') return a.field === 'register_columns' ? `column “${esc(d.label)}” ${d.archived ? '(archived)' : ''}` : `dropdown list “${esc(d.key)}”`;
+      if (a.action === 'import') return `one-time import: ${esc(d.rows)} added, ${esc(d.skipped)} left out`;
+      if (a.action === 'insert') return `new lead ${esc(d.mobile || '')}`;
+      return '';
+    };
     el.querySelector('#auTable').innerHTML = '<thead><tr><th>When</th><th>User</th><th>Action</th><th>Lead</th><th>Field</th><th>Was</th><th>Now</th><th>Detail</th></tr></thead><tbody>' +
-      audit.rows.map(a => `<tr><td style="white-space:nowrap">${esc(dt(a))}</td><td>${esc(a.user_name)}</td><td><span class="rg-badge ${a.action === 'delete' || a.action === 'blocked' ? 'bad' : a.action === 'download' || a.action === 'report' ? 'warn' : a.action === 'config' ? 'info' : ''}">${esc(a.action)}</span></td><td>${esc(lead(a.row_id))}</td><td>${esc(a.action === 'blocked' ? a.field : (a.action === 'download' || a.action === 'report' || a.action === 'config' ? '' : fl(a.field)))}</td><td>${esc(a.old_value || '')}</td><td>${esc(a.new_value || '')}</td><td>${detail(a)}</td></tr>`).join('') + '</tbody>';
+      audit.rows.map(a => `<tr><td style="white-space:nowrap">${esc(dt(a))}</td><td>${esc(a.user_name)}</td><td><span class="rg-badge ${a.action === 'delete' || a.action === 'blocked' ? 'bad' : a.action === 'download' || a.action === 'report' ? 'warn' : a.action === 'config' ? 'info' : ''}">${esc(a.action)}</span></td><td>${esc(lead(a.row_id))}</td><td>${esc(a.action === 'blocked' ? a.field : (a.action === 'download' || a.action === 'report' || a.action === 'config' || a.action === 'import' ? '' : fl(a.field)))}</td><td>${esc(a.old_value || '')}</td><td>${esc(a.new_value || '')}</td><td>${detail(a)}</td></tr>`).join('') + '</tbody>';
     el.querySelector('#auMore').innerHTML = audit.done ? `<small style="color:var(--rg-muted)">${audit.rows.length} entries · end of log</small>` : '<button class="rg-btn sm">Load more</button>';
   }
 
   /* ---------- access ---------- */
   async function renderAccess() {
     const el = document.getElementById('p-access');
-    const [p, perms] = await Promise.all([
+    const [p, perms, imps] = await Promise.all([
       sb().from('profiles').select('id, name, email, role').eq('role', 'marketing'),
-      sb().from('register_user_perms').select('user_id, can_download')
+      sb().from('register_user_perms').select('user_id, can_download'),
+      sb().from('register_import_status').select('user_id, imported_at, imported_rows, skipped_rows')
     ]);
+    const imap = {}; (imps.data || []).forEach(x => { imap[x.user_id] = x; });
     const map = {}; (perms.data || []).forEach(x => { map[x.user_id] = x.can_download; });
     el.innerHTML = `<div class="rg-card"><h3>Marketing users</h3><p class="sub">Marketing accounts can open only the register — never tasks, projects or the team — and can never download it; they can only save reports for you to review. Create one on the Team page (choose the role “Marketing”).</p>
-      <table class="rg-table"><thead><tr><th>Name</th><th>Email</th><th>Can save reports</th></tr></thead><tbody>
-      ${(p.data || []).map(u => { const on = map[u.id] !== false; return `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.email)}</td><td><button class="rg-btn sm ${on ? '' : 'danger'}" data-perm="${u.id}" data-on="${on ? 1 : 0}">${on ? 'Can save reports — click to switch off' : 'Switched off — click to allow'}</button></td></tr>`; }).join('') || '<tr><td colspan="3">No marketing users yet.</td></tr>'}</tbody></table>
+      <table class="rg-table"><thead><tr><th>Name</th><th>Email</th><th>Can save reports</th><th>Excel import</th></tr></thead><tbody>
+      ${(p.data || []).map(u => { const on = map[u.id] !== false; return `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.email)}</td><td><button class="rg-btn sm ${on ? '' : 'danger'}" data-perm="${u.id}" data-on="${on ? 1 : 0}">${on ? 'Can save reports — click to switch off' : 'Switched off — click to allow'}</button></td><td>${imap[u.id] ? `Used ${esc(new Date(imap[u.id].imported_at).toLocaleDateString('en-GB'))} · ${esc(imap[u.id].imported_rows)} added, ${esc(imap[u.id].skipped_rows)} left out <button class="rg-btn sm" data-reopen="${u.id}">Re-open</button>` : 'Not used yet'}</td></tr>`; }).join('') || '<tr><td colspan="4">No marketing users yet.</td></tr>'}</tbody></table>
       <div class="rg-modal-actions" style="justify-content:flex-start"><a class="rg-btn primary" href="team.html" style="text-decoration:none">＋ Add marketing user (Team page)</a></div></div>`;
   }
   document.addEventListener('click', async (e) => {
+    const ro = e.target.dataset && e.target.dataset.reopen;
+    if (ro) {
+      if (!await customConfirm('Let this person run the one-time Excel import once more? Rows already imported stay in the register.', { title: 'Re-open import', confirmText: 'Re-open' })) return;
+      const { data, error } = await sb().from('register_import_status').delete().eq('user_id', ro).select('user_id');
+      if (error || !data || !data.length) { await customAlert(error ? error.message : 'Nothing changed.', { title: 'Not re-opened', danger: true }); return; }
+      showToast('success', 'Re-opened', 'They can import once more.'); renderAccess(); return;
+    }
     const d = e.target.dataset || {}; if (!d.perm) return;
     const next = d.on !== '1';
     const { error } = await sb().from('register_user_perms').upsert({ user_id: d.perm, can_download: next });

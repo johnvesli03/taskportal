@@ -49,7 +49,7 @@ async function requireAuth(opts) {
     window.location.replace('dashboard.html');
     return null;
   }
-  startPresence();
+  startPresence(profile.id);
   openAuthGate();
   if (opts.standalone) {
     try { if (localStorage.getItem('euodoo-dark-mode') === '1') document.body.classList.add('dark-mode'); } catch (e) {}
@@ -66,14 +66,14 @@ async function requireAuth(opts) {
    the time between beats, so it can't be inflated from the browser. It counts a
    tab that is merely open (even in the background) and separately counts the
    time the tab was actually in front of the person. */
-function startPresence() {
+function startPresence(uid) {
   if (window.__presenceOn) return;
   window.__presenceOn = true;
   let sid = null;
-  try { sid = sessionStorage.getItem('euodoo-sid'); } catch (e) {}
+  try { sid = sessionStorage.getItem('euodoo-sid:' + uid); } catch (e) {}
   if (!sid) {
     sid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
-    try { sessionStorage.setItem('euodoo-sid', sid); } catch (e) {}
+    try { sessionStorage.setItem('euodoo-sid:' + uid, sid); } catch (e) {}
   }
   const beat = () => {
     supabaseClient.rpc('track_presence', {
