@@ -663,22 +663,34 @@ const RegisterApp = (() => {
     if (t && t[3]) { const pm = /pm/i.test(t[3]); if (pm && hh < 12) hh += 12; if (!pm && hh === 12) hh = 0; }
     return `${d[3]}-${pad(d[2])}-${pad(d[1])}T${pad(hh)}:${mm}:00+05:30`;
   };
-  async function parseImportFile(file) {
+  async function parseImportFile(file, strict) {
     if (!window.XLSX) throw new Error('The Excel library could not be loaded. Check your connection and refresh.');
     const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
     const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' });
     const head = (aoa[0] || []).map(h => String(h).trim().toLowerCase());
     const map = {}; let remarkN = 0;
+    const before = () => Object.keys(map).length + remarkN;
+    const unknown = [];
     head.forEach((h, i) => {
+      const n0 = before();
+      if (!h || /^(owner|outcome approved|#|s\.?\s*no\.?|sl\.?\s*no\.?)$/.test(h)) return;
       if (/^date$/.test(h)) map.lead_date = i; else if (/^time$/.test(h)) map.lead_time = i; else if (/client/.test(h)) map.client_name = i;
       else if (/company/.test(h)) map.company = i; else if (/^mobile/.test(h)) map.mobile = i; else if (/landline/.test(h)) map.landline = i;
       else if (/^email$/.test(h)) map.email = i; else if (/lead source/.test(h)) map.lead_source = i; else if (/introductory/.test(h)) map.intro_email_sent = i;
-      else if (/^date\s*&\s*time/.test(h)) map.intro_email_at = i;
+      else if (/call\s*\/?\s*e-?mail|date\s*&\s*time/.test(h)) map.intro_email_at = i;
       else if (/current status/.test(h)) map.current_status = i; else if (/discussion|notes/.test(h)) map.last_notes = i;
       else if (/1st.*date/.test(h)) map.f1_date = i; else if (/2nd.*date/.test(h)) map.f2_date = i; else if (/3rd.*date/.test(h)) map.f3_date = i;
       else if (/remarks/.test(h)) { remarkN++; if (remarkN <= 3) map['f' + remarkN + '_remarks'] = i; }
       else if (/outcome/.test(h)) map.outcome = i;
+      if (before() === n0) unknown.push(String(aoa[0][i]).trim());
     });
+    if (strict) {
+      const need = { lead_date: 'Date', lead_time: 'Time', client_name: 'Client Name', mobile: 'Mobile No', lead_source: 'Lead Source', intro_email_at: 'Call/Email Date', current_status: 'Current Status' };
+      const missing = Object.keys(need).filter(k => map[k] == null).map(k => need[k]);
+      if (missing.length || unknown.length) throw new Error('The headings in your file do not match the register, so nothing was imported.' +
+        (missing.length ? '\n\nMissing: ' + missing.join(', ') : '') + (unknown.length ? '\n\nNot recognised: ' + unknown.join(', ') : '') +
+        '\n\nUse the exact column headings of the register (row 1), then try again.');
+    }
     if (map.client_name == null || map.mobile == null) throw new Error('Could not find the “Client Name” and “Mobile No” columns in the first row. Please use the register’s column headings.');
     const outcomes = (S.opts.outcome || []).map(x => x.toLowerCase());
     const rows = aoa.slice(1).map((r, idx) => ({ r, line: idx + 2 })).filter(x => x.r.some(c => String(c).trim() !== '')).map(({ r, line }) => {
@@ -773,7 +785,7 @@ const RegisterApp = (() => {
     let parsed = [], probs = [];
     m.querySelector('#imFile').onchange = async (e) => {
       const file = e.target.files[0]; if (!file) return;
-      try { parsed = await parseImportFile(file); } catch (err) { await customAlert(err.message, { title: 'Cannot read the file' }); return; }
+      try { parsed = await parseImportFile(file, true); } catch (err) { await customAlert(err.message, { title: 'Cannot read the file' }); return; }
       if (parsed.length > 2000) { await customAlert('A one-time import can have at most 2000 rows. Please split off the rest and add those leads normally.', { title: 'Too many rows' }); parsed = []; return; }
       const seen = new Set(); probs = parsed.map(o => checkImportRow(o, seen));
       m.querySelector('#imPreview').innerHTML = importPreviewHtml(parsed, probs);
