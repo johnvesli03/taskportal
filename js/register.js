@@ -696,33 +696,42 @@ const RegisterApp = (() => {
     if (!window.XLSX) throw new Error('The Excel library could not be loaded. Check your connection and refresh.');
     const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
     const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' });
-    const head = (aoa[0] || []).map(h => String(h).trim().toLowerCase());
-    const map = {}; let remarkN = 0;
-    const before = () => Object.keys(map).length + remarkN;
-    const unknown = [];
+    // find the heading row (the row among the first 15 that matches the most register columns), then map columns by meaning
+    const classify = (h) => {
+      if (!h || /^(owner|outcome approved|#|s\.?\s*no\.?|sl\.?\s*no\.?)$/.test(h)) return null;
+      if (/landline|land\s*line|telephone|^tel\b/.test(h)) return 'landline';
+      if (/^(lead\s*)?date$|^date of (lead|entry)|^entry date/.test(h)) return 'lead_date';
+      if (/^time$|time slot/.test(h)) return 'lead_time';
+      if (/client|customer|contact\s*person|^name$|party/.test(h)) return 'client_name';
+      if (/company|organi[sz]ation|firm|business/.test(h)) return 'company';
+      if (/mobile|phone|cell|whatsapp|contact\s*(no|number)/.test(h)) return 'mobile';
+      if (/^e-?mail(\s*(id|address))?$/.test(h)) return 'email';
+      if (/source/.test(h)) return 'lead_source';
+      if (/introductory/.test(h)) return 'intro_email_sent';
+      if (/call\s*\/?\s*e-?mail|date\s*&\s*time/.test(h)) return 'intro_email_at';
+      if (/status/.test(h)) return 'current_status';
+      if (/1st.*date|first.*date/.test(h)) return 'f1_date';
+      if (/2nd.*date|second.*date/.test(h)) return 'f2_date';
+      if (/3rd.*date|third.*date/.test(h)) return 'f3_date';
+      if (/remark/.test(h)) return 'remark';
+      if (/discussion|notes?|comment/.test(h)) return 'last_notes';
+      if (/outcome/.test(h)) return 'outcome';
+      return null;
+    };
+    const norm = (c) => String(c).trim().toLowerCase().replace(/\s+/g, ' ');
+    let hdr = 0, best = -1;
+    for (let r = 0; r < Math.min(15, aoa.length); r++) { const sc = (aoa[r] || []).filter(c => classify(norm(c))).length; if (sc > best) { best = sc; hdr = r; } }
+    const head = (aoa[hdr] || []).map(norm);
+    const map = {}; let remarkN = 0; const unknown = [];
     head.forEach((h, i) => {
-      const n0 = before();
+      const k = classify(h);
       if (!h || /^(owner|outcome approved|#|s\.?\s*no\.?|sl\.?\s*no\.?)$/.test(h)) return;
-      if (/^date$/.test(h)) map.lead_date = i; else if (/^time$/.test(h)) map.lead_time = i; else if (/client/.test(h)) map.client_name = i;
-      else if (/company/.test(h)) map.company = i; else if (/^mobile/.test(h)) map.mobile = i; else if (/landline/.test(h)) map.landline = i;
-      else if (/^email$/.test(h)) map.email = i; else if (/lead source/.test(h)) map.lead_source = i; else if (/introductory/.test(h)) map.intro_email_sent = i;
-      else if (/call\s*\/?\s*e-?mail|date\s*&\s*time/.test(h)) map.intro_email_at = i;
-      else if (/current status/.test(h)) map.current_status = i; else if (/discussion|notes/.test(h)) map.last_notes = i;
-      else if (/1st.*date/.test(h)) map.f1_date = i; else if (/2nd.*date/.test(h)) map.f2_date = i; else if (/3rd.*date/.test(h)) map.f3_date = i;
-      else if (/remarks/.test(h)) { remarkN++; if (remarkN <= 3) map['f' + remarkN + '_remarks'] = i; }
-      else if (/outcome/.test(h)) map.outcome = i;
-      if (before() === n0) unknown.push(String(aoa[0][i]).trim());
+      if (!k) { unknown.push(String(aoa[hdr][i]).trim()); return; }
+      if (k === 'remark') { remarkN++; if (remarkN <= 3) map['f' + remarkN + '_remarks'] = i; }
+      else if (map[k] == null) map[k] = i;
     });
-    if (strict) {
-      const need = { lead_date: 'Date', lead_time: 'Time', client_name: 'Client Name', mobile: 'Mobile No', lead_source: 'Lead Source', intro_email_at: 'Call/Email Date', current_status: 'Current Status' };
-      const missing = Object.keys(need).filter(k => map[k] == null).map(k => need[k]);
-      if (missing.length || unknown.length) throw new Error('The headings in your file do not match the register, so nothing was imported.' +
-        (missing.length ? '\n\nMissing: ' + missing.join(', ') : '') + (unknown.length ? '\n\nNot recognised: ' + unknown.join(', ') : '') +
-        '\n\nUse the exact column headings of the register (row 1), then try again.');
-    }
-    if (map.client_name == null || map.mobile == null) throw new Error('Could not find the “Client Name” and “Mobile No” columns in the first row. Please use the register’s column headings.');
     const outcomes = (S.opts.outcome || []).map(x => x.toLowerCase());
-    const rows = aoa.slice(1).map((r, idx) => ({ r, line: idx + 2 })).filter(x => x.r.some(c => String(c).trim() !== '')).map(({ r, line }) => {
+    const rows = aoa.slice(hdr + 1).map((r, idx) => ({ r, line: hdr + idx + 2 })).filter(x => x.r.some(c => String(c).trim() !== '')).map(({ r, line }) => {
       const g = (k) => map[k] == null ? '' : r[map[k]];
       let mob = g('mobile'); mob = (typeof mob === 'number') ? String(Math.round(mob)) : String(mob).replace(/\.0$/, '').trim();
       const o = { __line: line, client_name: String(g('client_name')).trim(), company: String(g('company')).trim() || null, mobile: mob,
@@ -739,6 +748,8 @@ const RegisterApp = (() => {
       }
       return o;
     });
+    const LBL = { lead_date: 'Date', lead_time: 'Time', client_name: 'Client Name', company: 'Company', mobile: 'Mobile No', landline: 'Landline', email: 'Email', lead_source: 'Lead Source', intro_email_sent: 'Introductory Email', intro_email_at: 'Call/Email Date', current_status: 'Current Status', last_notes: 'Notes', f1_date: '1st follow-up date', f2_date: '2nd follow-up date', f3_date: '3rd follow-up date', f1_remarks: '1st remarks', f2_remarks: '2nd remarks', f3_remarks: '3rd remarks', outcome: 'Outcome' };
+    rows.__info = { matched: Object.keys(map).map(k => LBL[k] || k), unknown, noName: map.client_name == null, noMobile: map.mobile == null };
     return rows;
   }
   // the same checks the database applies, so people see problems BEFORE anything is saved
@@ -766,9 +777,11 @@ const RegisterApp = (() => {
     seen.add(key); return '';
   }
   function importPreviewHtml(parsed, probs) {
+    const info = parsed.__info || { matched: [], unknown: [] };
+    const infoHtml = `<p style="font-size:12.5px;color:var(--rg-muted)"><b>Columns matched automatically:</b> ${info.matched.length ? esc(info.matched.join(', ')) : 'none'}${info.unknown.length ? `<br><b>Not matched (ignored):</b> ${esc(info.unknown.join(', '))}` : ''}${info.noName || info.noMobile ? `<br><b style="color:var(--rg-bad)">No ${info.noName ? '“Client Name”' : ''}${info.noName && info.noMobile ? ' or ' : ''}${info.noMobile ? '“Mobile No”' : ''} column found, so those rows cannot be imported.</b>` : ''}</p>`;
     const bad = probs.filter(Boolean).length;
     const list = parsed.map((o, i) => probs[i] ? `<tr><td>${o.__line}</td><td>${esc(o.client_name || '—')}</td><td>${esc(o.mobile)}</td><td style="color:var(--rg-bad)">${esc(probs[i])}</td></tr>` : '').filter(Boolean).slice(0, 40).join('');
-    return `<p><b>${parsed.length}</b> rows found · <b style="color:var(--rg-ok)">${parsed.length - bad}</b> ready to import${bad ? ` · <b style="color:var(--rg-bad)">${bad}</b> will be left out` : ''}.</p>
+    return infoHtml + `<p><b>${parsed.length}</b> rows found · <b style="color:var(--rg-ok)">${parsed.length - bad}</b> ready to import${bad ? ` · <b style="color:var(--rg-bad)">${bad}</b> will be left out` : ''}.</p>
       ${bad ? `<div style="overflow:auto;max-height:200px"><table class="rg-table"><thead><tr><th>Excel row</th><th>Client</th><th>Mobile</th><th>Problem</th></tr></thead><tbody>${list}</tbody></table></div>${bad > 40 ? `<small>…and ${bad - 40} more</small>` : ''}` : ''}`;
   }
 
@@ -814,7 +827,7 @@ const RegisterApp = (() => {
     let parsed = [], probs = [];
     m.querySelector('#imFile').onchange = async (e) => {
       const file = e.target.files[0]; if (!file) return;
-      try { parsed = await parseImportFile(file, true); } catch (err) { await customAlert(err.message, { title: 'Cannot read the file' }); return; }
+      try { parsed = await parseImportFile(file); } catch (err) { await customAlert(err.message, { title: 'Cannot read the file' }); return; }
       if (parsed.length > 10000) { await customAlert('A one-time import can have at most 10,000 rows. Please split off the rest and add those leads normally.', { title: 'Too many rows' }); parsed = []; return; }
       const seen = new Set(); probs = parsed.map(o => checkImportRow(o, seen));
       m.querySelector('#imPreview').innerHTML = importPreviewHtml(parsed, probs);
