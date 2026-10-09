@@ -164,13 +164,27 @@ const RegisterApp = (() => {
     else if (f.sort === 'name') list.sort((a, b) => (a.client_name || '').localeCompare(b.client_name || ''));
     else if (f.sort === 'next') list.sort((a, b) => (fuState(a).next || far).localeCompare(fuState(b).next || far));
     else list.sort((a, b) => a.created_at < b.created_at ? 1 : -1);
+    const oname = (r) => (S.people[r.assigned_to] || '').toLowerCase();
+    if (S.admin && (f.sort === 'owner' || f.sort === 'ownerdesc')) list.sort((a, b) => f.sort === 'owner' ? oname(a).localeCompare(oname(b)) : oname(b).localeCompare(oname(a)));
+    else if (S.admin && f.group) list.sort((a, b) => oname(a).localeCompare(oname(b)));
     return list;
   }
 
   /* ---------- load ---------- */
+  // fetches the register in batches of 5000 so no lead is ever cut off
+  async function loadRegisterRows() {
+    const BATCH = 5000; let all = [];
+    for (let from = 0; from < 100000; from += BATCH) {
+      const { data, error } = await sb().from('follow_up_register').select('*').order('created_at', { ascending: false }).order('id').range(from, from + BATCH - 1);
+      if (error) return { data: null, error };
+      all = all.concat(data || []);
+      if (!data || data.length < BATCH) break;
+    }
+    return { data: all, error: null };
+  }
   async function loadAll() {
     const [rows, cols, sets, people, perm, imp] = await Promise.all([
-      sb().from('follow_up_register').select('*').order('created_at', { ascending: false }).limit(5000),
+      loadRegisterRows(),
       sb().from('register_columns').select('*').order('position'),
       sb().from('register_settings').select('key, options'),
       sb().from('profiles').select('id, name, role'),
@@ -252,15 +266,28 @@ const RegisterApp = (() => {
     const slice = list.slice(S.page * PAGE_SIZE, S.page * PAGE_SIZE + PAGE_SIZE);
     let h = '<table class="rg-grid"><thead><tr><th class="c-idx">#</th>';
     S.fields.forEach(f => { h += `<th class="${f.cls || ''}" style="min-width:${f.w}px">${esc(f.label)}${f.req ? ' <span class="req">*</span>' : ''}</th>`; });
-    h += '<th style="min-width:140px">Owner</th><th style="min-width:170px">Status</th><th style="min-width:60px"></th></tr></thead><tbody>';
+    const arrow = S.f.sort === 'owner' ? ' ▲' : S.f.sort === 'ownerdesc' ? ' ▼' : '';
+    h += `<th style="min-width:140px;${S.admin ? 'cursor:pointer' : ''}" ${S.admin ? 'data-act="sortowner" title="Click to sort by employee"' : ''}>Owner${S.admin ? (arrow || ' ⇅') : ''}</th><th style="min-width:170px">Status</th><th style="min-width:60px"></th></tr></thead><tbody>`;
     S.newRows.forEach(r => { h += rowHtml(r, 0); });
-    slice.forEach((r, i) => { h += rowHtml(r, S.page * PAGE_SIZE + i + 1); });
+    const perOwner = {}; list.forEach(r => { perOwner[r.assigned_to] = (perOwner[r.assigned_to] || 0) + 1; });
+    let lastOwner = null;
+    slice.forEach((r, i) => {
+      if (S.admin && S.f.group && r.assigned_to !== lastOwner) { lastOwner = r.assigned_to; h += `<tr class="rg-group"><td colspan="${S.fields.length + 4}" style="background:#eef2f7;font-weight:700;padding:8px 12px">👤 ${esc(S.people[r.assigned_to] || 'Unassigned')} — ${perOwner[r.assigned_to]} lead${perOwner[r.assigned_to] === 1 ? '' : 's'}</td></tr>`; }
+      h += rowHtml(r, S.page * PAGE_SIZE + i + 1);
+    });
     h += '</tbody></table>';
     if (!list.length && !S.newRows.length) h = '<div class="rg-empty"><b>No leads match.</b><br>Change the period or filters, or press “+ Add lead”.</div>';
     wrap.innerHTML = h;
     const pager = document.getElementById('rgPager');
     pager.innerHTML = `<span>${list.length} lead${list.length === 1 ? '' : 's'} in view · page ${S.page + 1} of ${pages}</span>
       <span><button class="rg-btn sm" data-act="prev" ${S.page === 0 ? 'disabled' : ''}>‹ Prev</button> <button class="rg-btn sm" data-act="next" ${S.page >= pages - 1 ? 'disabled' : ''}>Next ›</button></span>`;
+    if (S.admin) {
+      const sel = document.getElementById('fOwner');
+      if (sel) {
+        const cnt = {}; S.rows.forEach(r => { if (!r.deleted_at) cnt[r.assigned_to] = (cnt[r.assigned_to] || 0) + 1; });
+        Array.from(sel.options).forEach(op => { if (cnt[op.value] !== undefined || S.people[op.value]) op.textContent = `${S.people[op.value]} – ${cnt[op.value] || 0} lead${cnt[op.value] === 1 ? '' : 's'}`; });
+      }
+    }
     renderStrip(list); renderSavebar(); window.dispatchEvent(new CustomEvent('register:rendered'));
   }
 
@@ -618,7 +645,8 @@ const RegisterApp = (() => {
       <label class="rg-field"><span>Status</span><select id="fStatus">${o(S.opts.current_status || [], S.f.status, 'All')}</select></label>
       <label class="rg-field"><span>Source</span><select id="fSource">${o(S.opts.lead_source || [], S.f.source, 'All')}</select></label>
       <label class="rg-field"><span>Owner</span><select id="fOwner"><option value="all">Everyone</option><option value="me" ${S.f.owner === 'me' ? 'selected' : ''}>Mine only</option>${S.admin ? people.map(p => `<option value="${p.id}" ${S.f.owner === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('') : ''}</select></label>
-      <label class="rg-field"><span>Sort</span><select id="fSort">${[['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'Client A–Z'], ['next', 'Next follow-up']].map(([v, l]) => `<option value="${v}" ${S.f.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="rg-field"><span>Sort</span><select id="fSort">${[['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'Client A–Z'], ['next', 'Next follow-up']].concat(S.admin ? [['owner', 'Employee A–Z'], ['ownerdesc', 'Employee Z–A']] : []).map(([v, l]) => `<option value="${v}" ${S.f.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      ${S.admin ? `<label class="rg-field"><span>Group</span><select id="fGroup"><option value="0">No grouping</option><option value="1" ${S.f.group ? 'selected' : ''}>By employee</option></select></label>` : ''}
       ${S.admin ? `<label class="rg-field"><span>Deleted</span><select id="fDeleted"><option value="0">Hide</option><option value="1" ${S.f.showDeleted ? 'selected' : ''}>Show</option></select></label>` : ''}
       <span class="rg-spacer" style="flex:1"></span>
       <button class="rg-btn primary" data-act="add">＋ Add lead</button>
@@ -640,6 +668,7 @@ const RegisterApp = (() => {
     $('fSource').onchange = (e) => { S.f.source = e.target.value; apply(); };
     $('fOwner').onchange = (e) => { S.f.owner = e.target.value; apply(); };
     $('fSort').onchange = (e) => { S.f.sort = e.target.value; apply(); };
+    if ($('fGroup')) $('fGroup').onchange = (e) => { S.f.group = e.target.value === '1'; apply(); };
     if ($('fDeleted')) $('fDeleted').onchange = (e) => { S.f.showDeleted = e.target.value === '1'; apply(); };
   }
 
@@ -786,7 +815,7 @@ const RegisterApp = (() => {
     m.querySelector('#imFile').onchange = async (e) => {
       const file = e.target.files[0]; if (!file) return;
       try { parsed = await parseImportFile(file, true); } catch (err) { await customAlert(err.message, { title: 'Cannot read the file' }); return; }
-      if (parsed.length > 2000) { await customAlert('A one-time import can have at most 2000 rows. Please split off the rest and add those leads normally.', { title: 'Too many rows' }); parsed = []; return; }
+      if (parsed.length > 10000) { await customAlert('A one-time import can have at most 10,000 rows. Please split off the rest and add those leads normally.', { title: 'Too many rows' }); parsed = []; return; }
       const seen = new Set(); probs = parsed.map(o => checkImportRow(o, seen));
       m.querySelector('#imPreview').innerHTML = importPreviewHtml(parsed, probs);
       m.querySelector('#imGo').disabled = !probs.some(x => !x);
@@ -840,6 +869,7 @@ const RegisterApp = (() => {
       if (t.dataset.chip !== undefined) { S.f.chip = (S.f.chip === t.dataset.chip) ? '' : t.dataset.chip; S.page = 0; render(); return; }
       const a = t.dataset.act;
       if (a === 'add') addLead(); else if (a === 'menu') openMenu(t, t.dataset.id);
+      else if (a === 'sortowner') { S.f.sort = S.f.sort === 'owner' ? 'ownerdesc' : 'owner'; const fs = document.getElementById('fSort'); if (fs) fs.value = S.f.sort; S.page = 0; render(); }
       else if (a === 'prev') { S.page--; render(); } else if (a === 'next') { S.page++; render(); }
       else if (a === 'xlsx') downloadExcel(); else if (a === 'pdf') downloadPdf(); else if (a === 'report') saveReport();
       else if (a === 'reports') openReports(); else if (a === 'import') openImport(); else if (a === 'import1') { if (!S.importUsed) openOneTimeImport(); }
