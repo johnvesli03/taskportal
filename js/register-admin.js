@@ -3,7 +3,7 @@ const AdminReg = (() => {
   const sb = () => supabaseClient;
   const esc = (v) => escapeHtml(v == null ? '' : String(v));
   const dmy = RegisterApp.dmy;
-  const LISTS = [['time_slot', 'Time slots'], ['lead_source', 'Lead sources'], ['current_status', 'Current statuses'], ['outcome', 'Outcomes']];
+  const LISTS = [['time_slot', 'Time slots'], ['lead_source', 'Lead sources'], ['current_status', 'Current statuses'], ['category', 'Categories'], ['outcome', 'Outcomes']];
   const TYPES = [['text', 'Text'], ['number', 'Number'], ['date', 'Date'], ['yesno', 'Yes / No'], ['dropdown', 'Dropdown'], ['phone', 'Phone'], ['email', 'Email']];
   const loaded = {};
   let me = null;
@@ -71,6 +71,7 @@ const AdminReg = (() => {
       <div class="rg-two">
         <div class="rg-card"><h3>Leads by source</h3><table class="rg-table">${bars(count(rows, r => r.lead_source), rows.length)}</table></div>
         <div class="rg-card"><h3>Leads by status</h3><table class="rg-table">${bars(count(rows, r => r.current_status), rows.length)}</table></div>
+        <div class="rg-card"><h3>Leads by category</h3><table class="rg-table">${bars(count(rows, r => r.category || '—'), rows.length)}</table></div>
         <div class="rg-card"><h3>Outcomes</h3><table class="rg-table">${bars(count(rows, r => r.outcome || 'Open'), rows.length)}</table></div>
         <div class="rg-card"><h3>Per marketing user</h3><table class="rg-table"><thead><tr><th>User</th><th>Leads</th><th>Agreements</th><th>Not interested</th><th>Missed</th></tr></thead><tbody>
           ${Object.entries(byOwner).map(([id, o]) => `<tr><td>${esc(people[id] || id)}</td><td>${o.n}</td><td>${o.ag}</td><td>${o.ni}</td><td>${o.od ? `<span class="rg-badge bad">${o.od}</span>` : 0}</td></tr>`).join('') || '<tr><td colspan="5">No data</td></tr>'}</tbody></table></div>

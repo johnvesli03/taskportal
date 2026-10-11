@@ -12,7 +12,7 @@ const RegisterApp = (() => {
     drafts: {},          // id -> { field: value }
     newRows: [],         // unsaved leads
     errors: {},          // id -> message
-    f: { preset: 'all', from: '', to: '', basis: 'entry', q: '', status: '', source: '', owner: 'all', chip: '', sort: 'new', showDeleted: false },
+    f: { preset: 'all', from: '', to: '', basis: 'entry', q: '', status: '', source: '', owner: 'all', chip: '', category: '', sort: 'new', showDeleted: false },
     page: 0, saving: false, seq: 0, fields: [], mount: null
   };
   const esc = (v) => escapeHtml(v == null ? '' : String(v));
@@ -53,6 +53,7 @@ const RegisterApp = (() => {
       { k: 'intro_email_sent', label: 'Introductory Email Sent', type: 'select', fixed: ['Yes', 'No'], w: 150, id: true, noblank: true },
       { k: 'intro_email_at', label: 'Email Date & Time', type: 'datetime-local', w: 190, id: true },
       { k: 'current_status', label: 'Current Status', type: 'select', opt: 'current_status', w: 140 },
+      { k: 'category', label: 'Category', type: 'select', opt: 'category', w: 140 },
       { k: 'last_notes', label: 'Last Discussion Notes', type: 'text', w: 260, max: 3000 },
       { k: 'f1_date', label: '1st Follow-Up Date', type: 'date', w: 150, fu: 1, kind: 'date' },
       { k: 'f1_remarks', label: 'Remarks', type: 'text', w: 200, fu: 1, kind: 'rem', max: 1000 },
@@ -144,6 +145,7 @@ const RegisterApp = (() => {
       if (!inPeriod(r)) return false;
       if (f.status && r.current_status !== f.status) return false;
       if (f.source && r.lead_source !== f.source) return false;
+      if (f.category && r.category !== f.category) return false;
       if (f.owner === 'me' && !isMine(r)) return false;
       if (f.owner && f.owner !== 'all' && f.owner !== 'me' && r.assigned_to !== f.owner) return false;
       if (q) {
@@ -164,6 +166,7 @@ const RegisterApp = (() => {
     else if (f.sort === 'name') list.sort((a, b) => (a.client_name || '').localeCompare(b.client_name || ''));
     else if (f.sort === 'next') list.sort((a, b) => (fuState(a).next || far).localeCompare(fuState(b).next || far));
     else list.sort((a, b) => a.created_at < b.created_at ? 1 : -1);
+    if (f.sort === 'category' || f.sort === 'categorydesc') list.sort((a, b) => { const x = (a.category || '').toLowerCase(), y = (b.category || '').toLowerCase(); if (!x !== !y) return x ? -1 : 1; return f.sort === 'category' ? x.localeCompare(y) : y.localeCompare(x); });
     const oname = (r) => (S.people[r.assigned_to] || '').toLowerCase();
     if (S.admin && (f.sort === 'owner' || f.sort === 'ownerdesc')) list.sort((a, b) => f.sort === 'owner' ? oname(a).localeCompare(oname(b)) : oname(b).localeCompare(oname(a)));
     else if (S.admin && f.group) list.sort((a, b) => oname(a).localeCompare(oname(b)));
@@ -644,8 +647,9 @@ const RegisterApp = (() => {
       <label class="rg-field"><span>Search</span><input type="search" id="fQ" placeholder="Name, company, mobile…" value="${esc(S.f.q)}"></label>
       <label class="rg-field"><span>Status</span><select id="fStatus">${o(S.opts.current_status || [], S.f.status, 'All')}</select></label>
       <label class="rg-field"><span>Source</span><select id="fSource">${o(S.opts.lead_source || [], S.f.source, 'All')}</select></label>
+      <label class="rg-field"><span>Category</span><select id="fCategory">${o(S.opts.category || [], S.f.category, 'All')}</select></label>
       <label class="rg-field"><span>Owner</span><select id="fOwner"><option value="all">Everyone</option><option value="me" ${S.f.owner === 'me' ? 'selected' : ''}>Mine only</option>${S.admin ? people.map(p => `<option value="${p.id}" ${S.f.owner === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('') : ''}</select></label>
-      <label class="rg-field"><span>Sort</span><select id="fSort">${[['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'Client A–Z'], ['next', 'Next follow-up']].concat(S.admin ? [['owner', 'Employee A–Z'], ['ownerdesc', 'Employee Z–A']] : []).map(([v, l]) => `<option value="${v}" ${S.f.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="rg-field"><span>Sort</span><select id="fSort">${[['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'Client A–Z'], ['next', 'Next follow-up'], ['category', 'Category A–Z'], ['categorydesc', 'Category Z–A']].concat(S.admin ? [['owner', 'Employee A–Z'], ['ownerdesc', 'Employee Z–A']] : []).map(([v, l]) => `<option value="${v}" ${S.f.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       ${S.admin ? `<label class="rg-field"><span>Group</span><select id="fGroup"><option value="0">No grouping</option><option value="1" ${S.f.group ? 'selected' : ''}>By employee</option></select></label>` : ''}
       ${S.admin ? `<label class="rg-field"><span>Deleted</span><select id="fDeleted"><option value="0">Hide</option><option value="1" ${S.f.showDeleted ? 'selected' : ''}>Show</option></select></label>` : ''}
       <span class="rg-spacer" style="flex:1"></span>
@@ -665,6 +669,7 @@ const RegisterApp = (() => {
     $('fBasis').onclick = (e) => { const b = e.target.dataset.b; if (!b) return; S.f.basis = b; [...$('fBasis').children].forEach(x => x.classList.toggle('active', x.dataset.b === b)); apply(); };
     let tm; $('fQ').oninput = (e) => { clearTimeout(tm); tm = setTimeout(() => { S.f.q = e.target.value; apply(); }, 200); };
     $('fStatus').onchange = (e) => { S.f.status = e.target.value; apply(); };
+    $('fCategory').onchange = (e) => { S.f.category = e.target.value; apply(); };
     $('fSource').onchange = (e) => { S.f.source = e.target.value; apply(); };
     $('fOwner').onchange = (e) => { S.f.owner = e.target.value; apply(); };
     $('fSort').onchange = (e) => { S.f.sort = e.target.value; apply(); };
@@ -710,6 +715,7 @@ const RegisterApp = (() => {
       if (/introductory/.test(h)) return 'intro_email_sent';
       if (/call\s*\/?\s*e-?mail|date\s*&\s*time/.test(h)) return 'intro_email_at';
       if (/status/.test(h)) return 'current_status';
+      if (/categor/.test(h)) return 'category';
       if (/1st.*date|first.*date/.test(h)) return 'f1_date';
       if (/2nd.*date|second.*date/.test(h)) return 'f2_date';
       if (/3rd.*date|third.*date/.test(h)) return 'f3_date';
@@ -737,7 +743,7 @@ const RegisterApp = (() => {
       const o = { __line: line, client_name: String(g('client_name')).trim(), company: String(g('company')).trim() || null, mobile: mob,
         landline: String(g('landline')).trim() || null, email: String(g('email')).trim() || null, lead_source: String(g('lead_source')).trim() || null,
         lead_time: String(g('lead_time')).trim() || null, intro_email_sent: /^y/i.test(String(g('intro_email_sent'))) ? 'Yes' : 'No',
-        intro_email_at: toStamp(g('intro_email_at')), current_status: String(g('current_status')).trim() || null,
+        intro_email_at: toStamp(g('intro_email_at')), current_status: String(g('current_status')).trim() || null, category: String(g('category')).trim() || null,
         last_notes: String(g('last_notes')).trim() || null, outcome: String(g('outcome')).trim() || null };
       const ld = toISO(g('lead_date')); if (ld) o.lead_date = ld;
       for (let n = 1; n <= 3; n++) { o['f' + n + '_date'] = toISO(g('f' + n + '_date')); o['f' + n + '_remarks'] = String(g('f' + n + '_remarks')).trim() || null; }
@@ -748,22 +754,22 @@ const RegisterApp = (() => {
       }
       return o;
     });
-    const LBL = { lead_date: 'Date', lead_time: 'Time', client_name: 'Client Name', company: 'Company', mobile: 'Mobile No', landline: 'Landline', email: 'Email', lead_source: 'Lead Source', intro_email_sent: 'Introductory Email', intro_email_at: 'Call/Email Date', current_status: 'Current Status', last_notes: 'Notes', f1_date: '1st follow-up date', f2_date: '2nd follow-up date', f3_date: '3rd follow-up date', f1_remarks: '1st remarks', f2_remarks: '2nd remarks', f3_remarks: '3rd remarks', outcome: 'Outcome' };
+    const LBL = { lead_date: 'Date', lead_time: 'Time', client_name: 'Client Name', company: 'Company', mobile: 'Mobile No', landline: 'Landline', email: 'Email', lead_source: 'Lead Source', intro_email_sent: 'Introductory Email', intro_email_at: 'Call/Email Date', current_status: 'Current Status', category: 'Category', last_notes: 'Notes', f1_date: '1st follow-up date', f2_date: '2nd follow-up date', f3_date: '3rd follow-up date', f1_remarks: '1st remarks', f2_remarks: '2nd remarks', f3_remarks: '3rd remarks', outcome: 'Outcome' };
     rows.__info = { matched: Object.keys(map).map(k => LBL[k] || k), unknown, noName: map.client_name == null, noMobile: map.mobile == null };
     return rows;
   }
   // the same checks the database applies, so people see problems BEFORE anything is saved
   function checkImportRow(o, seen) {
     const dropdown = (k, key, label) => { const v = o[k]; if (v && !(S.opts[key] || []).includes(v)) return `${label} “${v}” is not in the allowed list`; return ''; };
-    if (!o.client_name) return 'Client name is missing';
+    if (!o.client_name) return 'Missing field — client name';
     const digits = o.mobile.replace(/\D/g, '');
-    if (!/^\d{10,13}$/.test(digits)) return 'Mobile number must have 10 to 13 digits';
+    if (!/^\d{10,13}$/.test(digits)) return o.mobile ? 'Invalid mobile number (needs 10 to 13 digits)' : 'Missing field — mobile number';
     const key = digits.slice(-10);
-    if (seen.has(key)) return 'Same mobile number appears earlier in the file';
-    if (S.rows.some(r => !r.deleted_at && String(r.mobile).replace(/\D/g, '').slice(-10) === key)) return 'Mobile number is already in the register';
+    if (seen.has(key)) return 'Duplicate — same mobile number appears earlier in the file';
+    if (S.rows.some(r => !r.deleted_at && String(r.mobile).replace(/\D/g, '').slice(-10) === key)) return 'Duplicate — mobile number is already in the register';
     if (o.landline && !/^[0-9+\-\s()]{6,20}$/.test(o.landline)) return 'Landline looks invalid';
     if (o.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email)) return 'Email looks invalid';
-    const bad = dropdown('lead_source', 'lead_source', 'Lead source') || dropdown('current_status', 'current_status', 'Status') || dropdown('lead_time', 'time_slot', 'Time') || dropdown('outcome', 'outcome', 'Outcome');
+    const bad = dropdown('lead_source', 'lead_source', 'Lead source') || dropdown('current_status', 'current_status', 'Status') || dropdown('category', 'category', 'Category') || dropdown('lead_time', 'time_slot', 'Time') || dropdown('outcome', 'outcome', 'Outcome');
     if (bad) return bad;
     let prev = o.lead_date || today();
     if (o.lead_date && o.lead_date > today()) return 'Date is in the future';
@@ -776,12 +782,19 @@ const RegisterApp = (() => {
     }
     seen.add(key); return '';
   }
+  function downloadLeftOut(parsed, probs) {
+    const rows = parsed.map((o, i) => probs[i] ? { 'Excel row': o.__line, 'Client Name': o.client_name, 'Mobile No': o.mobile, 'Company': o.company || '', 'Reason left out': probs[i] } : null).filter(Boolean);
+    if (!rows.length || !window.XLSX) return;
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Left out'); XLSX.writeFile(wb, 'left-out-rows.xlsx');
+  }
   function importPreviewHtml(parsed, probs) {
     const info = parsed.__info || { matched: [], unknown: [] };
     const infoHtml = `<p style="font-size:12.5px;color:var(--rg-muted)"><b>Columns matched automatically:</b> ${info.matched.length ? esc(info.matched.join(', ')) : 'none'}${info.unknown.length ? `<br><b>Not matched (ignored):</b> ${esc(info.unknown.join(', '))}` : ''}${info.noName || info.noMobile ? `<br><b style="color:var(--rg-bad)">No ${info.noName ? '“Client Name”' : ''}${info.noName && info.noMobile ? ' or ' : ''}${info.noMobile ? '“Mobile No”' : ''} column found, so those rows cannot be imported.</b>` : ''}</p>`;
     const bad = probs.filter(Boolean).length;
+    const nDup = probs.filter(x => /^Duplicate/.test(x)).length, nMiss = probs.filter(x => /^Missing/.test(x)).length;
+    const breakdown = bad ? `<p style="font-size:12.5px;margin:0 0 6px">Left out: <b>${nDup}</b> duplicate · <b>${nMiss}</b> missing a required field · <b>${bad - nDup - nMiss}</b> other problems. <button class="rg-btn sm" id="imLeft" type="button">⬇ Download left-out rows</button></p>` : '';
     const list = parsed.map((o, i) => probs[i] ? `<tr><td>${o.__line}</td><td>${esc(o.client_name || '—')}</td><td>${esc(o.mobile)}</td><td style="color:var(--rg-bad)">${esc(probs[i])}</td></tr>` : '').filter(Boolean).slice(0, 40).join('');
-    return infoHtml + `<p><b>${parsed.length}</b> rows found · <b style="color:var(--rg-ok)">${parsed.length - bad}</b> ready to import${bad ? ` · <b style="color:var(--rg-bad)">${bad}</b> will be left out` : ''}.</p>
+    return infoHtml + breakdown + `<p><b>${parsed.length}</b> rows found · <b style="color:var(--rg-ok)">${parsed.length - bad}</b> ready to import${bad ? ` · <b style="color:var(--rg-bad)">${bad}</b> will be left out` : ''}.</p>
       ${bad ? `<div style="overflow:auto;max-height:200px"><table class="rg-table"><thead><tr><th>Excel row</th><th>Client</th><th>Mobile</th><th>Problem</th></tr></thead><tbody>${list}</tbody></table></div>${bad > 40 ? `<small>…and ${bad - 40} more</small>` : ''}` : ''}`;
   }
 
@@ -799,7 +812,7 @@ const RegisterApp = (() => {
       const file = e.target.files[0]; if (!file) return;
       try { parsed = await parseImportFile(file); } catch (err) { await customAlert(err.message, { title: 'Cannot read the file' }); return; }
       const seen = new Set(); probs = parsed.map(o => checkImportRow(o, seen));
-      m.querySelector('#imPreview').innerHTML = importPreviewHtml(parsed, probs);
+      m.querySelector('#imPreview').innerHTML = importPreviewHtml(parsed, probs); { const lb = m.querySelector('#imLeft'); if (lb) lb.onclick = () => downloadLeftOut(parsed, probs); }
       m.querySelector('#imGo').disabled = !probs.some(x => !x);
     };
     m.querySelector('#imGo').onclick = async (e) => {
@@ -830,7 +843,7 @@ const RegisterApp = (() => {
       try { parsed = await parseImportFile(file); } catch (err) { await customAlert(err.message, { title: 'Cannot read the file' }); return; }
       if (parsed.length > 10000) { await customAlert('A one-time import can have at most 10,000 rows. Please split off the rest and add those leads normally.', { title: 'Too many rows' }); parsed = []; return; }
       const seen = new Set(); probs = parsed.map(o => checkImportRow(o, seen));
-      m.querySelector('#imPreview').innerHTML = importPreviewHtml(parsed, probs);
+      m.querySelector('#imPreview').innerHTML = importPreviewHtml(parsed, probs); { const lb = m.querySelector('#imLeft'); if (lb) lb.onclick = () => downloadLeftOut(parsed, probs); }
       m.querySelector('#imGo').disabled = !probs.some(x => !x);
     };
     m.querySelector('#imGo').onclick = async (e) => {
