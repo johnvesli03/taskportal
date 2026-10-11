@@ -174,14 +174,14 @@ const RegisterApp = (() => {
   }
 
   /* ---------- load ---------- */
-  // fetches the register in batches of 5000 so no lead is ever cut off
+  // The database returns at most 1000 rows per request, so keep asking for the next 1000 until nothing is left
   async function loadRegisterRows() {
-    const BATCH = 5000; let all = [];
-    for (let from = 0; from < 100000; from += BATCH) {
-      const { data, error } = await sb().from('follow_up_register').select('*').order('created_at', { ascending: false }).order('id').range(from, from + BATCH - 1);
+    const STEP = 1000; let all = [];
+    for (let from = 0; from < 200000;) {
+      const { data, error } = await sb().from('follow_up_register').select('*').order('created_at', { ascending: false }).order('id').range(from, from + STEP - 1);
       if (error) return { data: null, error };
-      all = all.concat(data || []);
-      if (!data || data.length < BATCH) break;
+      if (!data || !data.length) break;
+      all = all.concat(data); from += data.length;
     }
     return { data: all, error: null };
   }
@@ -824,11 +824,18 @@ const RegisterApp = (() => {
     m.querySelector('#imGo').onclick = async (e) => {
       const owner = m.querySelector('#imOwner').value; e.target.disabled = true; e.target.textContent = 'Importing…'; m.querySelector('#imPreview').innerHTML = '<div style="padding:18px;text-align:center;font-weight:600">⏳ Importation is under process… please wait and do not close this window.</div>'; m.querySelectorAll('[data-close]').forEach(b => b.disabled = true);
       let ok = 0; const fails = [];
-      for (let i = 0; i < parsed.length; i++) {
-        if (probs[i]) { fails.push(`Row ${parsed[i].__line} (${parsed[i].client_name || 'no name'}) — ${probs[i]}`); continue; }
-        const o = Object.assign({}, parsed[i]); delete o.__line;
-        const { error } = await sb().from('follow_up_register').insert(Object.assign({}, o, { assigned_to: owner, created_by: S.me }));
-        if (error) fails.push(`Row ${parsed[i].__line} (${parsed[i].client_name || 'no name'}) — ${nice(error.message)}`); else ok++;
+      const prog = m.querySelector('#imPreview > div');
+      const idxs = []; parsed.forEach((o, i) => { if (probs[i]) fails.push(`Row ${o.__line} (${o.client_name || 'no name'}) — ${probs[i]}`); else idxs.push(i); });
+      const mk = (i) => { const o = Object.assign({}, parsed[i]); delete o.__line; return Object.assign({}, o, { assigned_to: owner, created_by: S.me }); };
+      for (let c = 0; c < idxs.length; c += 200) {
+        const chunk = idxs.slice(c, c + 200);
+        const { error } = await sb().from('follow_up_register').insert(chunk.map(mk));
+        if (!error) ok += chunk.length;
+        else for (const i of chunk) {          // a bad row inside the batch: retry that batch row by row to find it
+          const r = await sb().from('follow_up_register').insert(mk(i));
+          if (r.error) fails.push(`Row ${parsed[i].__line} (${parsed[i].client_name || 'no name'}) — ${nice(r.error.message)}`); else ok++;
+        }
+        if (prog) prog.textContent = `⏳ Importation is under process… ${Math.min(c + 200, idxs.length)} of ${idxs.length} checked. Please wait and do not close this window.`;
       }
       m.remove(); await reload();
       showToast(fails.length ? 'warning' : 'success', 'Importation is done', `${ok} imported, ${fails.length} skipped.`);
