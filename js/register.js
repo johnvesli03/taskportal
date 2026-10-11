@@ -53,7 +53,7 @@ const RegisterApp = (() => {
       { k: 'intro_email_sent', label: 'Introductory Email Sent', type: 'select', fixed: ['Yes', 'No'], w: 150, id: true, noblank: true },
       { k: 'intro_email_at', label: 'Email Date & Time', type: 'datetime-local', w: 190, id: true },
       { k: 'current_status', label: 'Current Status', type: 'select', opt: 'current_status', w: 140 },
-      { k: 'category', label: 'Category', type: 'select', opt: 'category', w: 140 },
+      { k: 'category', label: 'Category', type: 'text', w: 160, max: 100, list: 'rgCatList' },
       { k: 'last_notes', label: 'Last Discussion Notes', type: 'text', w: 260, max: 3000 },
       { k: 'f1_date', label: '1st Follow-Up Date', type: 'date', w: 150, fu: 1, kind: 'date' },
       { k: 'f1_remarks', label: 'Remarks', type: 'text', w: 200, fu: 1, kind: 'rem', max: 1000 },
@@ -219,8 +219,9 @@ const RegisterApp = (() => {
       return `<select ${base} ${ro ? 'disabled' : ''}>${blank}${list.map(o => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
     }
     const type = f.type === 'text' ? 'text' : f.type;
+    const dl = f.list ? `list="${f.list}"` : '';
     const ph = f.k === 'mobile' ? '98765 43210' : f.k === 'email' ? 'name@company.com' : '';
-    return `<input type="${type}" ${base} value="${esc(v)}" ${f.max ? `maxlength="${f.max}"` : ''} ${ro ? 'readonly tabindex="-1"' : ''} ${ph && !ro ? `placeholder="${ph}"` : ''} autocomplete="off">`;
+    return `<input type="${type}" ${dl} ${base} value="${esc(v)}" ${f.max ? `maxlength="${f.max}"` : ''} ${ro ? 'readonly tabindex="-1"' : ''} ${ph && !ro ? `placeholder="${ph}"` : ''} autocomplete="off">`;
   }
   function metaHtml(row) {
     const b = [];
@@ -279,6 +280,7 @@ const RegisterApp = (() => {
       h += rowHtml(r, S.page * PAGE_SIZE + i + 1);
     });
     h += '</tbody></table>';
+    h += `<datalist id="rgCatList">${categories().map(c => `<option value="${esc(c)}">`).join('')}</datalist>`;
     if (!list.length && !S.newRows.length) h = '<div class="rg-empty"><b>No leads match.</b><br>Change the period or filters, or press “+ Add lead”.</div>';
     wrap.innerHTML = h;
     const pager = document.getElementById('rgPager');
@@ -291,6 +293,7 @@ const RegisterApp = (() => {
         Array.from(sel.options).forEach(op => { if (cnt[op.value] !== undefined || S.people[op.value]) op.textContent = `${S.people[op.value]} – ${cnt[op.value] || 0} lead${cnt[op.value] === 1 ? '' : 's'}`; });
       }
     }
+    { const cs = document.getElementById('fCategory'); if (cs) { const cur = S.f.category; cs.innerHTML = '<option value="">All</option>' + categories().map(c => `<option value="${esc(c)}" ${c === cur ? 'selected' : ''}>${esc(c)}</option>`).join(''); } }
     renderStrip(list); renderSavebar(); window.dispatchEvent(new CustomEvent('register:rendered'));
   }
 
@@ -353,8 +356,11 @@ const RegisterApp = (() => {
   function onInput(e) {
     const el = e.target; if (!el.dataset || !el.dataset.k || !el.dataset.id) return;
     if (el.tagName === 'SELECT' && e.type === 'input') return;
+    if (el.dataset.k === 'category' && e.type === 'change') { const t = el.value.trim().replace(/\s+/g, ' '); const hit = categories().find(c => c.toLowerCase() === t.toLowerCase()); el.value = hit || t; }
     setDraft(el.dataset.id, el.dataset.k, el.value);
   }
+  // the categories already used in the register (Tax, Hospital, …) — suggestions + filter list
+  function categories() { const m = {}; S.rows.forEach(r => { const c = (r.category || '').trim(); if (c && !m[c.toLowerCase()]) m[c.toLowerCase()] = c; }); return Object.keys(m).sort().map(k => m[k]); }
   function onKey(e) {
     const el = e.target; if (!el.dataset || !el.dataset.k) return;
     if ((e.key === 'Enter' && el.tagName !== 'TEXTAREA') || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -647,7 +653,7 @@ const RegisterApp = (() => {
       <label class="rg-field"><span>Search</span><input type="search" id="fQ" placeholder="Name, company, mobile…" value="${esc(S.f.q)}"></label>
       <label class="rg-field"><span>Status</span><select id="fStatus">${o(S.opts.current_status || [], S.f.status, 'All')}</select></label>
       <label class="rg-field"><span>Source</span><select id="fSource">${o(S.opts.lead_source || [], S.f.source, 'All')}</select></label>
-      <label class="rg-field"><span>Category</span><select id="fCategory">${o(S.opts.category || [], S.f.category, 'All')}</select></label>
+      <label class="rg-field"><span>Category</span><select id="fCategory">${o(categories(), S.f.category, 'All')}</select></label>
       <label class="rg-field"><span>Owner</span><select id="fOwner"><option value="all">Everyone</option><option value="me" ${S.f.owner === 'me' ? 'selected' : ''}>Mine only</option>${S.admin ? people.map(p => `<option value="${p.id}" ${S.f.owner === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('') : ''}</select></label>
       <label class="rg-field"><span>Sort</span><select id="fSort">${[['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'Client A–Z'], ['next', 'Next follow-up'], ['category', 'Category A–Z'], ['categorydesc', 'Category Z–A']].concat(S.admin ? [['owner', 'Employee A–Z'], ['ownerdesc', 'Employee Z–A']] : []).map(([v, l]) => `<option value="${v}" ${S.f.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       ${S.admin ? `<label class="rg-field"><span>Group</span><select id="fGroup"><option value="0">No grouping</option><option value="1" ${S.f.group ? 'selected' : ''}>By employee</option></select></label>` : ''}
@@ -769,7 +775,7 @@ const RegisterApp = (() => {
     if (S.rows.some(r => !r.deleted_at && String(r.mobile).replace(/\D/g, '').slice(-10) === key)) return 'Duplicate — mobile number is already in the register';
     if (o.landline && !/^[0-9+\-\s()]{6,20}$/.test(o.landline)) return 'Landline looks invalid';
     if (o.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email)) return 'Email looks invalid';
-    const bad = dropdown('lead_source', 'lead_source', 'Lead source') || dropdown('current_status', 'current_status', 'Status') || dropdown('category', 'category', 'Category') || dropdown('lead_time', 'time_slot', 'Time') || dropdown('outcome', 'outcome', 'Outcome');
+    const bad = dropdown('lead_source', 'lead_source', 'Lead source') || dropdown('current_status', 'current_status', 'Status') ||  dropdown('lead_time', 'time_slot', 'Time') || dropdown('outcome', 'outcome', 'Outcome');
     if (bad) return bad;
     let prev = o.lead_date || today();
     if (o.lead_date && o.lead_date > today()) return 'Date is in the future';

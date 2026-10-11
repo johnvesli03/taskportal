@@ -3,7 +3,7 @@ const AdminReg = (() => {
   const sb = () => supabaseClient;
   const esc = (v) => escapeHtml(v == null ? '' : String(v));
   const dmy = RegisterApp.dmy;
-  const LISTS = [['time_slot', 'Time slots'], ['lead_source', 'Lead sources'], ['current_status', 'Current statuses'], ['category', 'Categories'], ['outcome', 'Outcomes']];
+  const LISTS = [['time_slot', 'Time slots'], ['lead_source', 'Lead sources'], ['current_status', 'Current statuses'], ['outcome', 'Outcomes']];
   const TYPES = [['text', 'Text'], ['number', 'Number'], ['date', 'Date'], ['yesno', 'Yes / No'], ['dropdown', 'Dropdown'], ['phone', 'Phone'], ['email', 'Email']];
   const loaded = {};
   let me = null;
