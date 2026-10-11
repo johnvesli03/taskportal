@@ -822,7 +822,7 @@ const RegisterApp = (() => {
       m.querySelector('#imGo').disabled = !probs.some(x => !x);
     };
     m.querySelector('#imGo').onclick = async (e) => {
-      const owner = m.querySelector('#imOwner').value; e.target.disabled = true; e.target.textContent = 'Importing…';
+      const owner = m.querySelector('#imOwner').value; e.target.disabled = true; e.target.textContent = 'Importing…'; m.querySelector('#imPreview').innerHTML = '<div style="padding:18px;text-align:center;font-weight:600">⏳ Importation is under process… please wait and do not close this window.</div>'; m.querySelectorAll('[data-close]').forEach(b => b.disabled = true);
       let ok = 0; const fails = [];
       for (let i = 0; i < parsed.length; i++) {
         if (probs[i]) { fails.push(`Row ${parsed[i].__line} (${parsed[i].client_name || 'no name'}) — ${probs[i]}`); continue; }
@@ -831,7 +831,7 @@ const RegisterApp = (() => {
         if (error) fails.push(`Row ${parsed[i].__line} (${parsed[i].client_name || 'no name'}) — ${nice(error.message)}`); else ok++;
       }
       m.remove(); await reload();
-      showToast(fails.length ? 'warning' : 'success', 'Import finished', `${ok} imported, ${fails.length} skipped.`);
+      showToast(fails.length ? 'warning' : 'success', 'Importation is done', `${ok} imported, ${fails.length} skipped.`);
       if (fails.length) await customAlert('Skipped rows:\n\n• ' + fails.slice(0, 15).join('\n• ') + (fails.length > 15 ? `\n…and ${fails.length - 15} more` : ''), { title: 'Some rows were not imported' });
     };
   }
@@ -855,15 +855,15 @@ const RegisterApp = (() => {
     m.querySelector('#imGo').onclick = async (e) => {
       const good = parsed.filter((o, i) => !probs[i]); const left = parsed.length - good.length;
       if (!(await customConfirm(`This is your ONE-TIME import.\n\n• ${good.length} lead(s) will be added\n• ${left} row(s) will be left out (you can add those by hand afterwards)\n\nAfter this the import option is switched off for your account. Continue?`, { confirmText: 'Import now', danger: true }))) return;
-      e.target.disabled = true; e.target.textContent = 'Importing…';
+      e.target.disabled = true; e.target.textContent = 'Importing…'; m.querySelector('#imPreview').innerHTML = '<div style="padding:18px;text-align:center;font-weight:600">⏳ Importation is under process… please wait and do not close this window.</div>'; m.querySelectorAll('[data-close]').forEach(b => b.disabled = true);
       const payload = good.map(o => { const c = Object.assign({}, o); delete c.__line; return c; });
       const { data, error } = await sb().rpc('register_import_leads', { p_rows: payload });
-      if (error) { e.target.disabled = false; e.target.textContent = 'Import now (one time)'; await customAlert(nice(error.message), { title: 'Import failed', danger: true }); return; }
+      if (error) { m.querySelectorAll('[data-close]').forEach(b => b.disabled = false); m.querySelector('#imPreview').innerHTML = ''; e.target.disabled = false; e.target.textContent = 'Import now (one time)'; await customAlert(nice(error.message), { title: 'Import failed', danger: true }); return; }
       m.remove(); S.importUsed = true; await reload();
       const serverSkipped = (data.skipped || []).map(x => `Row ${good[x.row - 1] ? good[x.row - 1].__line : x.row} — ${nice(x.reason)}`);
       const clientSkipped = parsed.map((o, i) => probs[i] ? `Row ${o.__line} (${o.client_name || 'no name'}) — ${probs[i]}` : '').filter(Boolean);
       const all = clientSkipped.concat(serverSkipped);
-      showToast('success', 'Import complete', `${data.imported} lead(s) added. The import option is now switched off.`);
+      showToast('success', 'Importation is done', `${data.imported} lead(s) added. The import option is now switched off.`);
       if (all.length) await customAlert(`${data.imported} added. These rows were left out, add them by hand if needed:\n\n• ` + all.slice(0, 20).join('\n• ') + (all.length > 20 ? `\n…and ${all.length - 20} more` : ''), { title: 'Import finished' });
     };
   }
