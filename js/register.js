@@ -410,7 +410,7 @@ const RegisterApp = (() => {
     return e;
   }
   function nice(msg) {
-    if (/uq_register_mobile|duplicate key/i.test(msg)) return 'A lead with this mobile number already exists.';
+    if (/uq_register_mobile|duplicate key/i.test(msg)) return 'Duplicate — a lead with this mobile number already exists.';
     if (/row-level security/i.test(msg)) return 'You do not have permission to change this lead.';
     return msg;
   }
@@ -509,6 +509,52 @@ const RegisterApp = (() => {
     const row = rowById(id);
     if (!row.deleted_at && !(await customConfirm(`Delete the lead “${row.client_name}”? It is hidden, never destroyed, and can be restored.`, { confirmText: 'Delete', danger: true }))) return;
     await adminPatch(id, { deleted_at: row.deleted_at ? null : new Date().toISOString() }, row.deleted_at ? 'Lead restored.' : 'Lead deleted.');
+  }
+  /* ---------- admin: find & remove repeated leads ---------- */
+  function openDedupe() {
+    if (!S.admin) return;
+    const m = modal(`<h3>Find repeated leads</h3>
+      <p class="sub">Finds leads that repeat the same details. One lead in each group is kept; the ticked ones are deleted (hidden, never destroyed — you can restore them with “Show deleted”). Every deletion is logged.</p>
+      <div class="rg-form">
+        <label>Repeated when the same<select id="dpBy"><option value="email">Email</option><option value="namecomp">Client name + company</option><option value="company">Company</option><option value="name">Client name</option></select></label>
+        <label>Keep<select id="dpKeep"><option value="old">Oldest entry</option><option value="new">Newest entry</option><option value="full">Most complete entry</option></select></label>
+      </div>
+      <div style="margin-top:10px"><button class="rg-btn primary" id="dpScan" type="button">Find repeats</button></div>
+      <div id="dpOut" style="margin-top:14px"></div>
+      <div class="rg-modal-actions"><button class="rg-btn" data-close>Close</button><button class="rg-btn danger" id="dpDel" disabled>Delete ticked leads</button></div>`);
+    const norm = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9@.]+/g, ' ').trim();
+    const keyOf = (r, by) => by === 'email' ? norm(r.email) : by === 'company' ? norm(r.company) : by === 'name' ? norm(r.client_name) : (norm(r.client_name) && norm(r.company) ? norm(r.client_name) + '|' + norm(r.company) : '');
+    const filled = (r) => S.fields.filter(f => { const v = r[f.k]; return v != null && String(v).trim() !== ''; }).length;
+    let shown = [];
+    const upd = () => { const n = m.querySelectorAll('.dp-chk:checked').length; const b = m.querySelector('#dpDel'); b.disabled = !n; b.textContent = n ? `Delete ${n} ticked lead${n === 1 ? '' : 's'}` : 'Delete ticked leads'; };
+    m.querySelector('#dpScan').onclick = () => {
+      const by = m.querySelector('#dpBy').value, keep = m.querySelector('#dpKeep').value;
+      const groups = {};
+      S.rows.filter(r => !r.deleted_at).forEach(r => { const k = keyOf(r, by); if (k) (groups[k] = groups[k] || []).push(r); });
+      const reps = Object.values(groups).filter(g => g.length > 1);
+      reps.forEach(g => g.sort((a, b) => keep === 'new' ? (a.created_at < b.created_at ? 1 : -1) : keep === 'full' ? (filled(b) - filled(a)) || (a.created_at < b.created_at ? -1 : 1) : (a.created_at < b.created_at ? -1 : 1)));
+      const total = reps.reduce((n, g) => n + g.length - 1, 0);
+      const out = m.querySelector('#dpOut');
+      if (!reps.length) { out.innerHTML = '<p><b>No repeated leads found</b> for this setting.</p>'; shown = []; upd(); return; }
+      const lim = reps.slice(0, 150); shown = lim;
+      out.innerHTML = `<p><b>${reps.length}</b> group${reps.length === 1 ? '' : 's'} of repeats · <b>${total}</b> lead${total === 1 ? '' : 's'} can be removed${reps.length > lim.length ? ` (showing the first ${lim.length} groups — run it again after deleting to see the rest)` : ''}.</p>
+        <div style="overflow:auto;max-height:46vh"><table class="rg-table" style="white-space:nowrap"><thead><tr><th></th><th>Client</th><th>Mobile</th><th>Company</th><th>Email</th><th>Category</th><th>Owner</th><th>Entered</th></tr></thead><tbody>` +
+        lim.map(g => g.map((r, i) => `<tr style="${i === 0 ? 'border-top:2px solid var(--rg-line,#cbd5e1)' : ''}"><td>${i === 0 ? '<span class="rg-badge ok">Keep</span>' : `<input type="checkbox" class="dp-chk" data-id="${esc(r.id)}" checked>`}</td><td>${esc(r.client_name)}</td><td>${esc(r.mobile)}</td><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${esc(r.company || '')}</td><td>${esc(r.email || '')}</td><td>${esc(r.category || '')}</td><td>${esc(S.people[r.assigned_to] || '')}</td><td>${esc(dmy(r.lead_date || String(r.created_at).slice(0, 10)))}</td></tr>`).join('')).join('') + '</tbody></table></div>';
+      out.querySelectorAll('.dp-chk').forEach(c => c.onchange = upd); upd();
+    };
+    m.querySelector('#dpDel').onclick = async (e) => {
+      const ids = Array.from(m.querySelectorAll('.dp-chk:checked')).map(c => c.dataset.id); if (!ids.length) return;
+      if (!(await customConfirm(`Delete ${ids.length} repeated lead${ids.length === 1 ? '' : 's'}? They are hidden, not destroyed, and can be restored from “Show deleted”.`, { confirmText: 'Delete', danger: true }))) return;
+      e.target.disabled = true; e.target.textContent = 'Deleting…';
+      let done = 0, fail = 0; const now = new Date().toISOString();
+      for (let i = 0; i < ids.length; i += 100) {
+        const chunk = ids.slice(i, i + 100);
+        const { data, error } = await sb().from('follow_up_register').update({ deleted_at: now }).in('id', chunk).select('id');
+        if (error) fail += chunk.length; else { done += (data || []).length; fail += chunk.length - (data || []).length; }
+      }
+      m.remove(); await reload();
+      showToast(fail ? 'warning' : 'success', 'Repeated leads removed', `${done} deleted${fail ? `, ${fail} could not be deleted` : ''}.`);
+    };
   }
   function openReassign(id) {
     const opts = S.peopleList.filter(p => p.role === 'marketing' || p.role === 'admin');
@@ -663,7 +709,7 @@ const RegisterApp = (() => {
       ${S.admin ? '<button class="rg-btn" data-act="xlsx">⬇ Excel</button><button class="rg-btn" data-act="pdf">⬇ PDF</button>' : ''}
       <button class="rg-btn" data-act="report" ${S.perms.can_save ? '' : 'disabled title="Saving reports is switched off for your account"'}>Save as report</button>
       <button class="rg-btn" data-act="reports">Saved reports</button>
-      ${S.admin ? '<button class="rg-btn" data-act="import">⬆ Import Excel</button>' : (S.importUsed ? '' : '<button class="rg-btn" data-act="import1" title="Works only once">⬆ One-time Excel import</button>')}
+      ${S.admin ? '<button class="rg-btn" data-act="import">⬆ Import Excel</button><button class="rg-btn" data-act="dedupe">🧹 Find repeats</button>' : (S.importUsed ? '' : '<button class="rg-btn" data-act="import1" title="Works only once">⬆ One-time Excel import</button>')}
     </div>`;
   }
   function wireToolbar() {
@@ -911,7 +957,7 @@ const RegisterApp = (() => {
       else if (a === 'sortowner') { S.f.sort = S.f.sort === 'owner' ? 'ownerdesc' : 'owner'; const fs = document.getElementById('fSort'); if (fs) fs.value = S.f.sort; S.page = 0; render(); }
       else if (a === 'prev') { S.page--; render(); } else if (a === 'next') { S.page++; render(); }
       else if (a === 'xlsx') downloadExcel(); else if (a === 'pdf') downloadPdf(); else if (a === 'report') saveReport();
-      else if (a === 'reports') openReports(); else if (a === 'import') openImport(); else if (a === 'import1') { if (!S.importUsed) openOneTimeImport(); }
+      else if (a === 'reports') openReports(); else if (a === 'import') openImport(); else if (a === 'dedupe') openDedupe(); else if (a === 'import1') { if (!S.importUsed) openOneTimeImport(); }
     });
     setInterval(refreshQuiet, 120000);
     document.getElementById('rgSaveBtn').onclick = saveAll; document.getElementById('rgDiscardBtn').onclick = discardAll;
