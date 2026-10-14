@@ -61,6 +61,7 @@
         <div style="display:flex; gap:8px; align-items:center;">
           <span class="status-pill" id="priorityBadge"></span>
           <span class="status-pill" id="statusBadge"></span>
+          <button class="btn btn-secondary" id="editTaskBtn" data-admin-only="1" style="display:none; padding:7px 12px; font-size:12px;" onclick="openEditTask()">Edit Task</button>
           <button class="btn btn-danger" id="deleteTaskBtn" data-admin-only="1" style="display:none; padding:7px 12px; font-size:12px;" onclick="deleteTask()">Delete Task</button>
         </div>
       </div>
@@ -122,7 +123,8 @@
           <div class="portal-project-card">
             <div id="timeSummary" class="portal-note" style="margin-bottom:10px;"></div>
             <div id="timeEntryList" style="margin-bottom:10px;"></div>
-            <form id="timeForm" style="display:flex; gap:8px;">
+            <form id="timeForm" style="display:flex; gap:8px; flex-wrap:wrap;">
+              <select id="timeWho" class="input-box" style="display:none; max-width:160px;" title="Log time for"></select>
               <input type="number" class="input-box" id="timeHours" min="0.25" step="0.25" placeholder="Hours" style="max-width:100px;" required>
               <input type="text" class="input-box" id="timeNote" placeholder="What did you work on? (optional)">
               <button type="submit" class="btn btn-secondary" style="white-space:nowrap;">Log</button>
@@ -181,6 +183,26 @@
   </div>
 </div>
 
+<div class="premium-modal" id="editTaskModal">
+  <div class="premium-modal__backdrop" onclick="closeEditTask()"></div>
+  <div class="premium-modal__dialog">
+    <button class="premium-modal__close" onclick="closeEditTask()" aria-label="Close">&times;</button>
+    <div class="section-tag">Edit task</div>
+    <h3>Task details</h3>
+    <div style="margin-top:12px; display:grid; gap:10px;">
+      <label style="font-size:.78rem; font-weight:600;">Title<input type="text" id="etTitle" class="input-box" maxlength="200" style="width:100%; margin-top:4px;"></label>
+      <label style="font-size:.78rem; font-weight:600;">Description<textarea id="etDesc" class="input-box" rows="4" maxlength="4000" style="width:100%; margin-top:4px;"></textarea></label>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+        <label style="font-size:.78rem; font-weight:600;">Priority<select id="etPriority" class="input-box" style="width:100%; margin-top:4px;"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
+        <label style="font-size:.78rem; font-weight:600;">Due date<input type="date" id="etDue" class="input-box" style="width:100%; margin-top:4px;"></label>
+        <label style="font-size:.78rem; font-weight:600;">Est. hours<input type="number" id="etEst" class="input-box" min="0" step="0.5" style="width:100%; margin-top:4px;"></label>
+      </div>
+    </div>
+    <div style="margin-top:12px;"><div style="font-size:.78rem; font-weight:600;">Assigned people</div><div id="etAssignees" style="margin-top:4px; max-height:170px; overflow-y:auto; border:1px solid var(--border-rule); border-radius:8px; padding:4px 8px;"></div></div>
+    <button class="btn btn-primary" style="width:100%; justify-content:center; margin-top:14px;" onclick="saveEditTask()">Save changes</button>
+  </div>
+</div>
+
 <script src="js/supabase-config.js"></script>
 <script src="js/auth.js"></script>
 <script>
@@ -205,19 +227,48 @@
       ? `<b style="color:var(--ink);">${total}h</b> logged of <b style="color:var(--ink);">${est}h</b> estimated ${total > est ? `<span style="color:#b91c1c;">(over by ${(total - est).toFixed(2)}h)</span>` : ''}`
       : (total ? `<b style="color:var(--ink);">${total}h</b> logged so far (no estimate set)` : 'No time logged yet.');
 
-    listEl.innerHTML = (entries || []).slice(0, 6).map(e => `
-      <div style="display:flex; justify-content:space-between; gap:8px; padding:5px 0; font-size:.8rem; color:var(--ink-soft); border-bottom:1px solid var(--border-rule);">
+    window.__timeEntries = entries || [];
+    const who = document.getElementById('timeWho');
+    if (who && isAdmin(currentProfile)) {
+      const ppl = (window.__currentAssigneeIds || []).length ? teamRoster.filter(p => window.__currentAssigneeIds.includes(p.id)) : teamRoster;
+      const keep = who.value;
+      who.innerHTML = `<option value="">Me (${escapeHtml(currentProfile.name)})</option>` + ppl.filter(p => p.id !== currentProfile.id).map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+      who.value = keep; who.style.display = '';
+    }
+    listEl.style.maxHeight = '220px'; listEl.style.overflowY = 'auto';
+    listEl.innerHTML = (entries || []).map(e => {
+      const mine = e.user_id === currentProfile.id, admin = isAdmin(currentProfile);
+      return `<div style="display:flex; justify-content:space-between; gap:8px; padding:5px 0; font-size:.8rem; color:var(--ink-soft); border-bottom:1px solid var(--border-rule);">
         <span>${escapeHtml(e.profiles?.name || 'Someone')}${e.note ? ' — ' + escapeHtml(e.note) : ''}</span>
-        <span style="white-space:nowrap;"><b>${e.hours}h</b> · ${timeAgo(e.created_at)}</span>
-      </div>
-    `).join('');
+        <span style="white-space:nowrap;"><b>${e.hours}h</b> · ${timeAgo(e.created_at)}
+          ${admin ? `<a href="#" onclick="editTimeEntry('${e.id}');return false;" style="margin-left:6px;">Edit</a>` : ''}
+          ${(admin || mine) ? `<a href="#" onclick="deleteTimeEntry('${e.id}');return false;" style="margin-left:6px; color:#b91c1c;">Delete</a>` : ''}</span>
+      </div>`;
+    }).join('');
+  }
+  async function editTimeEntry(id) {
+    const e = (window.__timeEntries || []).find(x => x.id === id); if (!e || !isAdmin(currentProfile)) return;
+    const h = await customPrompt(`Hours logged by ${e.profiles?.name || 'this person'}:`, String(e.hours), { title: 'Edit logged hours' });
+    if (h === null || h === undefined) return;
+    const hours = Number(String(h).trim());
+    if (!(hours > 0) || hours > 999) { showToast('error', 'Check hours', 'Enter a number of hours above 0.'); return; }
+    const { data, error } = await supabaseClient.from('time_entries').update({ hours }).eq('id', id).select('id');
+    if (error || !data || !data.length) { showToast('error', 'Not saved', error ? error.message : 'The entry could not be changed.'); return; }
+    showToast('success', 'Hours updated', `Now ${hours}h.`); loadTimeEntries();
+  }
+  async function deleteTimeEntry(id) {
+    if (!(await customConfirm('Delete this time entry?', { confirmText: 'Delete', danger: true }))) return;
+    const { data, error } = await supabaseClient.from('time_entries').delete().eq('id', id).select('id');
+    if (error || !data || !data.length) { showToast('error', 'Not deleted', error ? error.message : 'You cannot delete this entry.'); return; }
+    showToast('success', 'Deleted', 'Time entry removed.'); loadTimeEntries();
   }
 
   document.getElementById('timeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const hours = document.getElementById('timeHours').value;
     const note = document.getElementById('timeNote').value.trim();
-    const { error } = await supabaseClient.from('time_entries').insert({ task_id: taskId, user_id: currentProfile.id, hours, note: note || null });
+    const who = (isAdmin(currentProfile) && document.getElementById('timeWho').value) || currentProfile.id;
+    const { error } = await supabaseClient.from('time_entries').insert({ task_id: taskId, user_id: who, hours, note: note || null });
     if (error) { await customAlert('Could not log time: ' + error.message, { title: 'Something went wrong', danger: true }); return; }
     document.getElementById('timeForm').reset();
     showToast('success', 'Time logged', `${hours}h added to this task.`);
@@ -434,6 +485,46 @@
       ? assignees.map(a => `<span class="tag-chip" style="background:var(--primary);">${escapeHtml(a.name)}</span>`).join('')
       : `<span class="portal-note" style="font-size:.8rem;">Unassigned</span>`;
     window.__currentAssigneeIds = assignees.map(a => a.id);
+  }
+
+  /* ---------- Edit task details (admin) ---------- */
+  function openEditTask() {
+    if (!isAdmin(currentProfile)) { showToast('error', 'Admins only', 'Only an admin can edit a task.'); return; }
+    const t = currentTask || {};
+    document.getElementById('etTitle').value = t.title || '';
+    document.getElementById('etDesc').value = t.description || '';
+    document.getElementById('etPriority').value = t.priority || 'medium';
+    document.getElementById('etDue').value = t.due_date || '';
+    document.getElementById('etEst').value = t.estimated_hours != null ? t.estimated_hours : '';
+    const cur = window.__currentAssigneeIds || [];
+    document.getElementById('etAssignees').innerHTML = teamRoster.map(p => `<label style="display:flex; align-items:center; gap:8px; padding:5px 0; font-size:.84rem;"><input type="checkbox" value="${p.id}" ${cur.includes(p.id) ? 'checked' : ''}> ${escapeHtml(p.name)}</label>`).join('');
+    document.getElementById('editTaskModal').classList.add('is-open');
+  }
+  function closeEditTask() { document.getElementById('editTaskModal').classList.remove('is-open'); }
+  async function saveEditTask() {
+    const title = document.getElementById('etTitle').value.trim();
+    if (!title) { showToast('error', 'Title needed', 'A task needs a title.'); return; }
+    const est = document.getElementById('etEst').value;
+    const patch = {
+      title,
+      description: document.getElementById('etDesc').value.trim() || null,
+      priority: document.getElementById('etPriority').value,
+      due_date: document.getElementById('etDue').value || null,
+      estimated_hours: est === '' ? null : Number(est)
+    };
+    if (patch.estimated_hours !== null && (isNaN(patch.estimated_hours) || patch.estimated_hours < 0)) { showToast('error', 'Check hours', 'Estimated hours must be 0 or more.'); return; }
+    const picked = Array.from(document.querySelectorAll('#etAssignees input:checked')).map(i => i.value);
+    patch.assigned_to = picked[0] || null;   // keeps the main assignee in step with the first person ticked
+    const { data, error } = await supabaseClient.from('tasks').update(patch).eq('id', taskId).select('id');
+    if (error || !data || !data.length) { showToast('error', 'Not saved', error ? error.message : 'The task could not be changed.'); return; }
+    const before = (window.__currentAssigneeIds || []).slice().sort().join(',');
+    if (before !== picked.slice().sort().join(',')) {
+      await supabaseClient.from('task_assignees').delete().eq('task_id', taskId);
+      if (picked.length) { const r = await supabaseClient.from('task_assignees').insert(picked.map(uid => ({ task_id: taskId, user_id: uid }))); if (r.error) { showToast('error', 'People not saved', r.error.message); } }
+    }
+    closeEditTask();
+    showToast('success', 'Task updated', 'Your changes are saved.');
+    loadTaskAndUpdates();
   }
 
   function openAssigneeModal() {

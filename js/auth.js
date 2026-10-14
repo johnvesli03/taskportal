@@ -865,13 +865,25 @@ function exportCSV(filename, rows) {
    ============================================================ */
 async function computeWorkload() {
   const { data: people } = await supabaseClient.from('profiles').select('id, name, role');
-  const { data: tasks } = await supabaseClient.from('tasks').select('assigned_to, status, priority').neq('status', 'done');
+  // a task can have several people on it (task_assignees) besides its main assignee (tasks.assigned_to) — count each person once per task
+  const { data: tasks } = await supabaseClient.from('tasks').select('id, assigned_to, status, priority').neq('status', 'done');
+  const ids = (tasks || []).map(t => t.id);
+  const extra = [];
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await supabaseClient.from('task_assignees').select('task_id, user_id').in('task_id', ids.slice(i, i + 200));
+    (data || []).forEach(r => extra.push(r));
+  }
+  const byTask = {};
+  (tasks || []).forEach(t => { byTask[t.id] = new Set(t.assigned_to ? [t.assigned_to] : []); });
+  extra.forEach(r => { if (byTask[r.task_id]) byTask[r.task_id].add(r.user_id); });
   const counts = {};
   (people || []).forEach(p => counts[p.id] = { name: p.name, role: p.role, open: 0, overdue: 0, urgent: 0 });
   (tasks || []).forEach(t => {
-    if (!t.assigned_to || !counts[t.assigned_to]) return;
-    counts[t.assigned_to].open++;
-    if (t.priority === 'urgent') counts[t.assigned_to].urgent++;
+    byTask[t.id].forEach(uid => {
+      if (!counts[uid]) return;
+      counts[uid].open++;
+      if (t.priority === 'urgent') counts[uid].urgent++;
+    });
   });
   return Object.values(counts).sort((a, b) => b.open - a.open);
 }

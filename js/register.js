@@ -1,4 +1,113 @@
 /* ============================================================
+   Pure helpers — place (location) reading and smart duplicate matching
+   ============================================================ */
+const RegHelpers = (() => {
+  const CITIES = ['Mumbai', 'Navi Mumbai', 'Thane', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Delhi', 'Noida', 'Gurugram', 'Faridabad', 'Ghaziabad', 'Greater Noida', 'Chandigarh', 'Mohali', 'Panchkula', 'Ludhiana', 'Amritsar', 'Jalandhar', 'Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer', 'Lucknow', 'Kanpur', 'Agra', 'Varanasi', 'Prayagraj', 'Meerut', 'Dehradun', 'Haridwar', 'Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Raipur', 'Bilaspur', 'Patna', 'Ranchi', 'Jamshedpur', 'Kolkata', 'Howrah', 'Siliguri', 'Bhubaneswar', 'Cuttack', 'Guwahati', 'Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Gandhinagar', 'Bengaluru', 'Mysuru', 'Mangaluru', 'Hubballi', 'Belagavi', 'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Erode', 'Vellore', 'Hyderabad', 'Secunderabad', 'Warangal', 'Karimnagar', 'Nizamabad', 'Visakhapatnam', 'Vijayawada', 'Guntur', 'Tirupati', 'Chittoor', 'Nellore', 'Kurnool', 'Kadapa', 'Anantapur', 'Rajahmundry', 'Kakinada', 'Kochi', 'Thiruvananthapuram', 'Kozhikode', 'Thrissur', 'Kollam', 'Kannur', 'Goa', 'Panaji', 'Margao', 'Puducherry', 'Shimla', 'Jammu', 'Srinagar', 'Hosur', 'Puttur', 'Palakkad', 'Tumakuru', 'Davangere', 'Ballari', 'Shivamogga', 'Udupi', 'Dubai', 'Abu Dhabi', 'Sharjah', 'Singapore', 'London', 'New York'];
+  const ALIAS = { bombay: 'Mumbai', bangalore: 'Bengaluru', bengaluru: 'Bengaluru', madras: 'Chennai', calcutta: 'Kolkata', gurgaon: 'Gurugram', trivandrum: 'Thiruvananthapuram', cochin: 'Kochi', vizag: 'Visakhapatnam', poona: 'Pune', baroda: 'Vadodara', mysore: 'Mysuru', mangalore: 'Mangaluru', 'new delhi': 'Delhi', allahabad: 'Prayagraj', trichy: 'Tiruchirappalli', calicut: 'Kozhikode', hubli: 'Hubballi', belgaum: 'Belagavi', bhubaneshwar: 'Bhubaneswar', pondicherry: 'Puducherry', ernakulam: 'Kochi', tirupathi: 'Tirupati', hydrabad: 'Hyderabad' };
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const title = (s) => s.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
+  let cacheKey = '', cacheList = [];
+  // learned = locations already used in the register, so the list grows with the data
+  function matchers(learned) {
+    const key = (learned || []).join('|'); if (key === cacheKey && cacheList.length) return cacheList;
+    const map = {}; CITIES.forEach(c => { map[c.toLowerCase()] = c; });
+    Object.keys(ALIAS).forEach(a => { map[a] = ALIAS[a]; });
+    (learned || []).forEach(l => { if (l && !map[l.toLowerCase()]) map[l.toLowerCase()] = l; });
+    cacheList = Object.keys(map).map(k => ({ name: map[k], len: k.length, re: new RegExp('(^|[^a-z])' + esc(k) + '(?=[^a-z]|$)', 'gi') }));
+    cacheKey = key; return cacheList;
+  }
+  // "Plot 5, Andheri East, Mumbai 400069"  ->  "Mumbai"
+  function guessLocation(text, learned) {
+    const t = String(text || ''); if (t.trim().length < 3) return null;
+    let best = null;
+    matchers(learned).forEach(c => {
+      c.re.lastIndex = 0; let m, last = null;
+      while ((m = c.re.exec(t))) { last = m; if (m.index === c.re.lastIndex) c.re.lastIndex++; }
+      if (!last) return;
+      const end = last.index + last[0].length;
+      if (!best || end > best.end || (end === best.end && c.len > best.len)) best = { name: c.name, end, len: c.len };
+    });
+    if (best) return best.name;
+    const pin = t.match(/\b[1-9]\d{2}\s?\d{3}\b/);
+    if (pin) {
+      const seg = t.slice(0, pin.index).split(/[,\-–|\n]/).map(x => x.trim()).filter(Boolean).pop() || '';
+      if (/^[A-Za-z][A-Za-z .]{2,29}$/.test(seg) && !/\b(road|rd|street|st|nagar|colony|floor|building|plot|no|opp|near|behind|sector|phase|block|lane|complex|tower|plaza|market|chowk|cross|main|avenue|park|layout|extension|area|estate)\b/i.test(seg)) return title(seg);
+    }
+    return null;
+  }
+  // ---- duplicate matching ----
+  const SUFFIX = /\b(pvt|private|ltd|limited|llp|inc|co|company|corp|corporation|the|and|of|india|services|solutions)\b/g;
+  const normCompany = (v) => { const first = String(v || '').split(/[,\n]| - | – /)[0]; return first.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9 ]+/g, ' ').replace(SUFFIX, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).sort().join(' '); };
+  const normName = (v) => String(v || '').toLowerCase().replace(/\b(mr|mrs|ms|miss|dr|ca|cs|adv|prof|shri|smt|sri)\b\.?/g, ' ').replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).sort().join(' ');
+  const normEmail = (v) => { let e = String(v || '').toLowerCase().trim(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return ''; let [l, d] = e.split('@'); l = l.split('+')[0]; if (d === 'gmail.com' || d === 'googlemail.com') { l = l.replace(/\./g, ''); d = 'gmail.com'; } return l + '@' + d; };
+  const normPhone = (v) => { const d = String(v || '').replace(/\D/g, ''); return d.length >= 8 ? d.slice(-10) : ''; };
+  function lev(a, b, max) {
+    if (a === b) return 0; if (Math.abs(a.length - b.length) > max) return max + 1;
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i]; let rowMin = i;
+      for (let j = 1; j <= b.length; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); if (cur[j] < rowMin) rowMin = cur[j]; }
+      if (rowMin > max) return max + 1; prev = cur;
+    }
+    return prev[b.length];
+  }
+  const tol = (a, b) => Math.max(1, Math.floor(Math.min(a.length, b.length) * 0.12));
+  const similar = (a, b) => !!a && !!b && (a === b || (Math.min(a.length, b.length) >= 5 && lev(a, b, tol(a, b)) <= tol(a, b)));
+  // modes: smart | email | phone | namecomp | company
+  function findGroups(rows, mode) {
+    const n = rows.length, parent = Array.from({ length: n }, (_, i) => i);
+    const find = (x) => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+    const union = (a, b) => { a = find(a); b = find(b); if (a !== b) parent[b] = a; };
+    const byKey = (keys) => { const m = {}; rows.forEach((r, i) => { keys(r).forEach(k => { if (k) { if (m[k] === undefined) m[k] = i; else union(m[k], i); } }); }); };
+    const nameOf = rows.map(r => normName(r.client_name)), compOf = rows.map(r => normCompany(r.company));
+    const doEmail = mode === 'smart' || mode === 'email', doPhone = mode === 'smart' || mode === 'phone', doNC = mode === 'smart' || mode === 'namecomp', doCo = mode === 'company';
+    if (doEmail) byKey(r => ['e:' + normEmail(r.email)].filter(k => k !== 'e:'));
+    if (doPhone) byKey(r => [normPhone(r.mobile), normPhone(r.landline)].filter(Boolean).map(p => 'p:' + p));
+    if (doCo) rows.forEach((r, i) => { if (compOf[i].length >= 4) { /* exact on normalised first segment */ } });
+    if (doCo) { const m = {}; rows.forEach((r, i) => { const k = compOf[i]; if (k.length >= 4) { if (m[k] === undefined) m[k] = i; else union(m[k], i); } }); }
+    if (doNC) {
+      const exact = {}; rows.forEach((r, i) => { if (nameOf[i] && compOf[i]) { const k = nameOf[i] + '|' + compOf[i]; if (exact[k] === undefined) exact[k] = i; else union(exact[k], i); } });
+      // typo tolerance: same company + similar name, or same name + similar company
+      const bucket = (keyArr) => { const b = {}; rows.forEach((r, i) => { const k = keyArr[i]; if (k) (b[k] = b[k] || []).push(i); }); return b; };
+      const bc = bucket(compOf); Object.values(bc).forEach(ix => { if (ix.length > 1 && ix.length <= 80) for (let a = 0; a < ix.length; a++) for (let b = a + 1; b < ix.length; b++) if (find(ix[a]) !== find(ix[b]) && similar(nameOf[ix[a]], nameOf[ix[b]])) union(ix[a], ix[b]); });
+      const bn = bucket(nameOf); Object.values(bn).forEach(ix => { if (ix.length > 1 && ix.length <= 80) for (let a = 0; a < ix.length; a++) for (let b = a + 1; b < ix.length; b++) if (find(ix[a]) !== find(ix[b]) && compOf[ix[a]] && compOf[ix[b]] && similar(compOf[ix[a]], compOf[ix[b]])) union(ix[a], ix[b]); });
+    }
+    const g = {}; rows.forEach((r, i) => { const k = find(i); (g[k] = g[k] || []).push(r); });
+    return Object.values(g).filter(x => x.length > 1);
+  }
+  // index of existing leads, for checking an Excel file before it is imported
+  function buildIndex(rows) {
+    const idx = { e: new Set(), p: new Set(), nc: new Set() };
+    rows.forEach(r => { const e = normEmail(r.email); if (e) idx.e.add(e); [normPhone(r.mobile), normPhone(r.landline)].forEach(p => { if (p) idx.p.add(p); }); const n = normName(r.client_name), c = normCompany(r.company); if (n && c) idx.nc.add(n + '|' + c); });
+    return idx;
+  }
+  function importClash(o, idx, seen) {
+    const e = normEmail(o.email), n = normName(o.client_name), c = normCompany(o.company);
+    const phones = [normPhone(o.mobile), normPhone(o.landline)].filter(Boolean);
+    seen.e = seen.e || new Set(); seen.p = seen.p || new Set(); seen.nc = seen.nc || new Set();
+    let why = '';
+    if (e && idx.e.has(e)) why = 'Duplicate — same email is already in the register';
+    else if (e && seen.e.has(e)) why = 'Duplicate — same email appears earlier in the file';
+    else if (phones.some(p => idx.p.has(p))) why = 'Duplicate — this phone number is already in the register';
+    else if (n && c && idx.nc.has(n + '|' + c)) why = 'Duplicate — same client and company are already in the register';
+    else if (n && c && seen.nc.has(n + '|' + c)) why = 'Duplicate — same client and company appear earlier in the file';
+    return { why, remember: () => { if (e) seen.e.add(e); phones.forEach(p => seen.p.add(p)); if (n && c) seen.nc.add(n + '|' + c); } };
+  }
+  // why a lead is thought to repeat another one (shown in the review list)
+  function why(a, b) {
+    const w = [];
+    if (normEmail(a.email) && normEmail(a.email) === normEmail(b.email)) w.push('same email');
+    const pa = [normPhone(a.mobile), normPhone(a.landline)].filter(Boolean), pb = [normPhone(b.mobile), normPhone(b.landline)].filter(Boolean);
+    if (pa.some(p => pb.includes(p))) w.push('same phone');
+    const na = normName(a.client_name), nb = normName(b.client_name), ca = normCompany(a.company), cb = normCompany(b.company);
+    if (na && ca && (similar(na, nb) && similar(ca, cb))) w.push('same name + company');
+    else if (ca && ca === cb && ca.length >= 4) w.push('same company');
+    return w.length ? w.join(', ') : 'linked through another lead';
+  }
+  return { guessLocation, findGroups, why, buildIndex, importClash, normCompany, normName, normEmail, normPhone };
+})();
+
+/* ============================================================
    Follow-Up Register — grid engine (marketing page + admin page)
    Everything typed is a DRAFT until Save / Ctrl+S. The database
    re-checks every rule; this file only gives fast, friendly feedback.
@@ -12,7 +121,7 @@ const RegisterApp = (() => {
     drafts: {},          // id -> { field: value }
     newRows: [],         // unsaved leads
     errors: {},          // id -> message
-    f: { preset: 'all', from: '', to: '', basis: 'entry', q: '', status: '', source: '', owner: 'all', chip: '', category: '', sort: 'new', showDeleted: false },
+    f: { preset: 'all', from: '', to: '', basis: 'entry', q: '', status: '', source: '', owner: 'all', chip: '', category: '', location: '', sort: 'new', showDeleted: false },
     page: 0, saving: false, seq: 0, fields: [], mount: null
   };
   const esc = (v) => escapeHtml(v == null ? '' : String(v));
@@ -54,6 +163,7 @@ const RegisterApp = (() => {
       { k: 'intro_email_at', label: 'Email Date & Time', type: 'datetime-local', w: 190, id: true },
       { k: 'current_status', label: 'Current Status', type: 'select', opt: 'current_status', w: 140 },
       { k: 'category', label: 'Category', type: 'text', w: 160, max: 100, list: 'rgCatList' },
+      { k: 'location', label: 'Location', type: 'text', w: 150, max: 100, list: 'rgLocList' },
       { k: 'last_notes', label: 'Last Discussion Notes', type: 'text', w: 260, max: 3000 },
       { k: 'f1_date', label: '1st Follow-Up Date', type: 'date', w: 150, fu: 1, kind: 'date' },
       { k: 'f1_remarks', label: 'Remarks', type: 'text', w: 200, fu: 1, kind: 'rem', max: 1000 },
@@ -138,6 +248,9 @@ const RegisterApp = (() => {
     if (f.basis === 'followup') return within(r.f1_date) || within(r.f2_date) || within(r.f3_date);
     return within(r.lead_date);
   }
+  // what a lead is grouped under when the admin groups the list
+  function groupKey(r) { const g = S.f.group; return (g === 'location' ? (r.location || '~ No location') : g === 'category' ? (r.category || '~ No category') : (S.people[r.assigned_to] || '~ Unassigned')).toLowerCase(); }
+  function groupLabel(r) { const g = S.f.group; return g === 'location' ? '📍 ' + (r.location || 'No location') : g === 'category' ? '🏷 ' + (r.category || 'No category') : '👤 ' + (S.people[r.assigned_to] || 'Unassigned'); }
   function filtered() {
     const f = S.f, q = f.q.trim().toLowerCase();
     let list = S.rows.filter(r => (S.admin && f.showDeleted) ? true : !r.deleted_at);
@@ -146,6 +259,7 @@ const RegisterApp = (() => {
       if (f.status && r.current_status !== f.status) return false;
       if (f.source && r.lead_source !== f.source) return false;
       if (f.category && r.category !== f.category) return false;
+      if (f.location && (f.location === '__none' ? !!r.location : r.location !== f.location)) return false;
       if (f.owner === 'me' && !isMine(r)) return false;
       if (f.owner && f.owner !== 'all' && f.owner !== 'me' && r.assigned_to !== f.owner) return false;
       if (q) {
@@ -167,9 +281,10 @@ const RegisterApp = (() => {
     else if (f.sort === 'next') list.sort((a, b) => (fuState(a).next || far).localeCompare(fuState(b).next || far));
     else list.sort((a, b) => a.created_at < b.created_at ? 1 : -1);
     if (f.sort === 'category' || f.sort === 'categorydesc') list.sort((a, b) => { const x = (a.category || '').toLowerCase(), y = (b.category || '').toLowerCase(); if (!x !== !y) return x ? -1 : 1; return f.sort === 'category' ? x.localeCompare(y) : y.localeCompare(x); });
+    if (f.sort === 'location' || f.sort === 'locationdesc') list.sort((a, b) => { const x = (a.location || '').toLowerCase(), y = (b.location || '').toLowerCase(); if (!x !== !y) return x ? -1 : 1; return f.sort === 'location' ? x.localeCompare(y) : y.localeCompare(x); });
     const oname = (r) => (S.people[r.assigned_to] || '').toLowerCase();
     if (S.admin && (f.sort === 'owner' || f.sort === 'ownerdesc')) list.sort((a, b) => f.sort === 'owner' ? oname(a).localeCompare(oname(b)) : oname(b).localeCompare(oname(a)));
-    else if (S.admin && f.group) list.sort((a, b) => oname(a).localeCompare(oname(b)));
+    else if (S.admin && f.group) list.sort((a, b) => groupKey(a).localeCompare(groupKey(b)));
     return list;
   }
 
@@ -273,13 +388,14 @@ const RegisterApp = (() => {
     const arrow = S.f.sort === 'owner' ? ' ▲' : S.f.sort === 'ownerdesc' ? ' ▼' : '';
     h += `<th style="min-width:140px;${S.admin ? 'cursor:pointer' : ''}" ${S.admin ? 'data-act="sortowner" title="Click to sort by employee"' : ''}>Owner${S.admin ? (arrow || ' ⇅') : ''}</th><th style="min-width:170px">Status</th><th style="min-width:60px"></th></tr></thead><tbody>`;
     S.newRows.forEach(r => { h += rowHtml(r, 0); });
-    const perOwner = {}; list.forEach(r => { perOwner[r.assigned_to] = (perOwner[r.assigned_to] || 0) + 1; });
-    let lastOwner = null;
+    const perGroup = {}; list.forEach(r => { const k = groupKey(r); perGroup[k] = (perGroup[k] || 0) + 1; });
+    let lastGroup = null;
     slice.forEach((r, i) => {
-      if (S.admin && S.f.group && r.assigned_to !== lastOwner) { lastOwner = r.assigned_to; h += `<tr class="rg-group"><td colspan="${S.fields.length + 4}" style="background:#eef2f7;font-weight:700;padding:8px 12px">👤 ${esc(S.people[r.assigned_to] || 'Unassigned')} — ${perOwner[r.assigned_to]} lead${perOwner[r.assigned_to] === 1 ? '' : 's'}</td></tr>`; }
+      if (S.admin && S.f.group && groupKey(r) !== lastGroup) { lastGroup = groupKey(r); h += `<tr class="rg-group"><td colspan="${S.fields.length + 4}" style="background:#eef2f7;font-weight:700;padding:8px 12px">${esc(groupLabel(r))} — ${perGroup[lastGroup]} lead${perGroup[lastGroup] === 1 ? '' : 's'}</td></tr>`; }
       h += rowHtml(r, S.page * PAGE_SIZE + i + 1);
     });
     h += '</tbody></table>';
+    h += `<datalist id="rgLocList">${locations().map(c => `<option value="${esc(c)}">`).join('')}</datalist>`;
     h += `<datalist id="rgCatList">${categories().map(c => `<option value="${esc(c)}">`).join('')}</datalist>`;
     if (!list.length && !S.newRows.length) h = '<div class="rg-empty"><b>No leads match.</b><br>Change the period or filters, or press “+ Add lead”.</div>';
     wrap.innerHTML = h;
@@ -293,6 +409,7 @@ const RegisterApp = (() => {
         Array.from(sel.options).forEach(op => { if (cnt[op.value] !== undefined || S.people[op.value]) op.textContent = `${S.people[op.value]} – ${cnt[op.value] || 0} lead${cnt[op.value] === 1 ? '' : 's'}`; });
       }
     }
+    { const ls = document.getElementById('fLocation'); if (ls) { const cnt = {}; let none = 0; S.rows.forEach(r => { if (r.deleted_at) return; if (r.location) cnt[r.location] = (cnt[r.location] || 0) + 1; else none++; }); const cur = S.f.location; ls.innerHTML = '<option value="">All</option>' + locations().map(c => `<option value="${esc(c)}" ${c === cur ? 'selected' : ''}>${esc(c)} (${cnt[c] || 0})</option>`).join('') + (none ? `<option value="__none" ${cur === '__none' ? 'selected' : ''}>No location (${none})</option>` : ''); } }
     { const cs = document.getElementById('fCategory'); if (cs) { const cur = S.f.category; cs.innerHTML = '<option value="">All</option>' + categories().map(c => `<option value="${esc(c)}" ${c === cur ? 'selected' : ''}>${esc(c)}</option>`).join(''); } }
     renderStrip(list); renderSavebar(); window.dispatchEvent(new CustomEvent('register:rendered'));
   }
@@ -356,11 +473,12 @@ const RegisterApp = (() => {
   function onInput(e) {
     const el = e.target; if (!el.dataset || !el.dataset.k || !el.dataset.id) return;
     if (el.tagName === 'SELECT' && e.type === 'input') return;
-    if (el.dataset.k === 'category' && e.type === 'change') { const t = el.value.trim().replace(/\s+/g, ' '); const hit = categories().find(c => c.toLowerCase() === t.toLowerCase()); el.value = hit || t; }
+    if ((el.dataset.k === 'category' || el.dataset.k === 'location') && e.type === 'change') { const t = el.value.trim().replace(/\s+/g, ' '); const hit = (el.dataset.k === 'category' ? categories() : locations()).find(c => c.toLowerCase() === t.toLowerCase()); el.value = hit || t; }
     setDraft(el.dataset.id, el.dataset.k, el.value);
   }
   // the categories already used in the register (Tax, Hospital, …) — suggestions + filter list
   function categories() { const m = {}; S.rows.forEach(r => { const c = (r.category || '').trim(); if (c && !m[c.toLowerCase()]) m[c.toLowerCase()] = c; }); return Object.keys(m).sort().map(k => m[k]); }
+  function locations() { const m = {}; S.rows.forEach(r => { const c = (r.location || '').trim(); if (c && !m[c.toLowerCase()]) m[c.toLowerCase()] = c; }); return Object.keys(m).sort().map(k => m[k]); }
   function onKey(e) {
     const el = e.target; if (!el.dataset || !el.dataset.k) return;
     if ((e.key === 'Enter' && el.tagName !== 'TEXTAREA') || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -427,6 +545,10 @@ const RegisterApp = (() => {
     if (extra) p.extra = extra;
     if (row.__new) { p.extra = p.extra || Object.assign({}, row.extra || {}); if (S.admin && d.assigned_to) p.assigned_to = d.assigned_to; }
     if (!row.__new && S.admin && d.assigned_to) p.assigned_to = d.assigned_to;
+    // the place is read from the company address when it has not been typed
+    if ((row.__new || Object.prototype.hasOwnProperty.call(d, 'company')) && !Object.prototype.hasOwnProperty.call(d, 'location') && !row.location) {
+      const g = RegHelpers.guessLocation(p.company || row.company || '', locations()); if (g) p.location = g;
+    }
     if (!p.intro_email_sent && row.__new) p.intro_email_sent = 'No';
     return p;
   }
@@ -510,50 +632,208 @@ const RegisterApp = (() => {
     if (!row.deleted_at && !(await customConfirm(`Delete the lead “${row.client_name}”? It is hidden, never destroyed, and can be restored.`, { confirmText: 'Delete', danger: true }))) return;
     await adminPatch(id, { deleted_at: row.deleted_at ? null : new Date().toISOString() }, row.deleted_at ? 'Lead restored.' : 'Lead deleted.');
   }
-  /* ---------- admin: find & remove repeated leads ---------- */
+  /* ---------- admin: assign leads by location, saved rules ---------- */
+  async function loadRules() {
+    const { data, error } = await sb().from('register_assign_rules').select('*').order('created_at');
+    return error ? [] : (data || []);
+  }
+  const lc = (v) => String(v || '').trim().toLowerCase();
+  // the most specific rule wins: location + category beats location alone
+  function ruleFor(row, rules, state) {
+    const hit = rules.filter(r => lc(r.location) === lc(row.location) && (!r.category || lc(r.category) === lc(row.category)));
+    if (!hit.length) return null;
+    hit.sort((a, b) => (b.category ? 1 : 0) - (a.category ? 1 : 0));
+    const r = hit[0];
+    if (!r.assignee2 || r.assignee2 === r.assignee) return r.assignee;
+    state = state || {}; const n = state[r.id] = (state[r.id] || 0) + 1;     // two owners: matching leads alternate between them
+    return n % 2 ? r.assignee : r.assignee2;
+  }
+  const ruleOwners = (r) => [r.assignee, r.assignee2].filter(x => x && x !== undefined);
+  async function bulkUpdate(ids, patch, onProgress) {
+    let done = 0, fail = 0;
+    for (let i = 0; i < ids.length; i += 100) {
+      const chunk = ids.slice(i, i + 100);
+      const { data, error } = await sb().from('follow_up_register').update(patch).in('id', chunk).select('id');
+      if (error) fail += chunk.length; else { done += (data || []).length; fail += chunk.length - (data || []).length; }
+      if (onProgress) onProgress(Math.min(i + 100, ids.length), ids.length);
+    }
+    return { done, fail };
+  }
+  async function openAssign() {
+    if (!S.admin) return;
+    let rules = await loadRules();
+    const people = S.peopleList.slice().sort((a, b) => a.name.localeCompare(b.name));
+    const pOpt = (sel) => people.map(p => `<option value="${p.id}" ${p.id === sel ? 'selected' : ''}>${esc(p.name)} (${p.role})</option>`).join('');
+    const m = modal(`<h3>Assign leads by location</h3>
+      <p class="sub">Send leads to an employee by place (read from the company address) and category. Every change is logged in the Audit log.</p>
+      <div class="rg-card" style="margin:0 0 14px"><h4 style="margin:0 0 8px">Assign now</h4>
+        <div class="rg-form">
+          <label>Location<select id="asLoc"></select></label>
+          <label>Category<select id="asCat"></select></label>
+          <label>Currently with<select id="asFrom"><option value="">Anyone</option>${pOpt('')}</select></label>
+          <label>Assign to<select id="asTo">${pOpt('')}</select></label>
+          <label>Split with (optional second owner)<select id="asTo2"><option value="">— nobody, all to one person —</option>${pOpt('')}</select></label>
+        </div>
+        <p id="asCount" style="margin:10px 0 6px"></p>
+        <button class="rg-btn primary" id="asGo" type="button">Assign</button></div>
+      <div class="rg-card" style="margin:0 0 14px"><h4 style="margin:0 0 8px">Saved rules <small style="font-weight:400">(used by “By saved location rules” in Import Excel, and by the button below)</small></h4>
+        <div id="asRules"></div>
+        <div class="rg-form" style="margin-top:8px">
+          <label>Location<input id="rlLoc" list="rgLocList" placeholder="e.g. Mumbai"></label>
+          <label>Category (optional)<input id="rlCat" list="rgCatList" placeholder="any"></label>
+          <label>Assign to<select id="rlTo">${pOpt('')}</select></label>
+          <label>Second owner (optional — leads are split evenly)<select id="rlTo2"><option value="">— none —</option>${pOpt('')}</select></label></div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="rg-btn" id="rlAdd" type="button">＋ Save rule</button><button class="rg-btn primary" id="rlApply" type="button">Apply rules to existing leads</button></div></div>
+      <div class="rg-card" style="margin:0 0 14px"><h4 style="margin:0 0 8px">Fill missing locations</h4>
+        <p id="flInfo" style="margin:0 0 8px"></p><button class="rg-btn" id="flGo" type="button">Read locations from company addresses</button></div>
+      <div class="rg-modal-actions"><button class="rg-btn" data-close>Close</button></div>`);
+    const live = () => S.rows.filter(r => !r.deleted_at);
+    const fillSelects = () => {
+      const cnt = {}; let none = 0; live().forEach(r => { if (r.location) cnt[r.location] = (cnt[r.location] || 0) + 1; else none++; });
+      const cc = {}; live().forEach(r => { if (r.category) cc[r.category] = (cc[r.category] || 0) + 1; });
+      const lv = m.querySelector('#asLoc').value, cv = m.querySelector('#asCat').value;
+      m.querySelector('#asLoc').innerHTML = '<option value="">Choose a location…</option>' + locations().map(l => `<option value="${esc(l)}">${esc(l)} (${cnt[l] || 0})</option>`).join('') + `<option value="__none">No location (${none})</option>`;
+      m.querySelector('#asCat').innerHTML = '<option value="">Any category</option>' + categories().map(c => `<option value="${esc(c)}">${esc(c)} (${cc[c] || 0})</option>`).join('');
+      m.querySelector('#asLoc').value = lv; m.querySelector('#asCat').value = cv;
+    };
+    const owners2 = () => { const a = m.querySelector('#asTo').value, b = m.querySelector('#asTo2').value; return b && b !== a ? [a, b] : [a]; };
+    const matching = () => {
+      const loc = m.querySelector('#asLoc').value, cat = m.querySelector('#asCat').value, from = m.querySelector('#asFrom').value, own = owners2();
+      if (!loc) return [];
+      return live().filter(r => (loc === '__none' ? !r.location : r.location === loc) && (!cat || r.category === cat) && (!from || r.assigned_to === from) && !own.includes(r.assigned_to));
+    };
+    const count = () => { const n = matching().length, loc = m.querySelector('#asLoc').value; m.querySelector('#asCount').innerHTML = loc ? `<b>${n}</b> lead${n === 1 ? '' : 's'} will ${owners2().length > 1 ? 'be split between ' + esc(owners2().map(i => S.people[i]).join(' and ')) : 'move to ' + esc(S.people[m.querySelector('#asTo').value] || '')}.` : '<span style="color:var(--rg-muted)">Choose a location to see how many leads match.</span>'; m.querySelector('#asGo').disabled = !n; };
+    const showRules = () => {
+      m.querySelector('#asRules').innerHTML = rules.length ? `<table class="rg-table"><thead><tr><th>Location</th><th>Category</th><th>Goes to</th><th></th></tr></thead><tbody>${rules.map(r => `<tr><td>${esc(r.location)}</td><td>${esc(r.category || 'any')}</td><td>${esc(S.people[r.assignee] || '?')}${r.assignee2 ? ' + ' + esc(S.people[r.assignee2] || '?') + ' <small>(split evenly)</small>' : ''}</td><td><button class="rg-btn sm danger" data-rdel="${esc(r.id)}" type="button">Remove</button></td></tr>`).join('')}</tbody></table>` : '<p style="color:var(--rg-muted);margin:0">No rules yet.</p>';
+    };
+    const fillInfo = () => {
+      const none = live().filter(r => !r.location && r.company); const guess = none.filter(r => RegHelpers.guessLocation(r.company, locations()));
+      m.querySelector('#flInfo').innerHTML = `<b>${live().filter(r => !r.location).length}</b> lead${live().filter(r => !r.location).length === 1 ? '' : 's'} have no location. A place can be read from the address for <b>${guess.length}</b> of them.`;
+      m.querySelector('#flGo').disabled = !guess.length;
+    };
+    const refresh = () => { fillSelects(); count(); showRules(); fillInfo(); };
+    refresh();
+    ['#asLoc', '#asCat', '#asFrom', '#asTo', '#asTo2'].forEach(q => m.querySelector(q).onchange = count);
+    m.querySelector('#asGo').onclick = async (e) => {
+      const rows = matching(); if (!rows.length) return; const own = owners2();
+      const half = own.length > 1 ? Math.ceil(rows.length / 2) : rows.length;
+      if (!(await customConfirm(own.length > 1 ? `Split ${rows.length} leads: ${half} to ${S.people[own[0]]} and ${rows.length - half} to ${S.people[own[1]]}?` : `Move ${rows.length} lead${rows.length === 1 ? '' : 's'} to ${S.people[own[0]]}?`, { confirmText: 'Assign' }))) return;
+      e.target.disabled = true; e.target.textContent = 'Assigning…';
+      const parts = own.length > 1 ? [[own[0], rows.slice(0, half)], [own[1], rows.slice(half)]] : [[own[0], rows]];
+      const r = { done: 0, fail: 0 };
+      for (const [uid, list] of parts) { const x = await bulkUpdate(list.map(l => l.id), { assigned_to: uid }, (d, t) => { e.target.textContent = `Assigning… ${d}/${t}`; }); r.done += x.done; r.fail += x.fail; }
+      await reload(); e.target.textContent = 'Assign'; refresh();
+      showToast(r.fail ? 'warning' : 'success', 'Leads assigned', `${r.done} moved${r.fail ? `, ${r.fail} could not be moved` : ''}.`);
+    };
+    m.querySelector('#rlAdd').onclick = async () => {
+      const loc = m.querySelector('#rlLoc').value.trim().replace(/\s+/g, ' '), cat = m.querySelector('#rlCat').value.trim().replace(/\s+/g, ' '), to = m.querySelector('#rlTo').value;
+      if (!loc) { showToast('error', 'Location needed', 'Type the location this rule is for.'); return; }
+      const hit = locations().find(l => lc(l) === lc(loc)) || loc.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()), chit = cat ? (categories().find(c => lc(c) === lc(cat)) || cat) : null;
+      const to2 = m.querySelector('#rlTo2').value;
+      const { error } = await sb().from('register_assign_rules').insert({ location: hit, category: chit, assignee: to, assignee2: to2 && to2 !== to ? to2 : null, created_by: S.me });
+      if (error) { await customAlert(nice(error.message), { title: 'Rule not saved', danger: true }); return; }
+      rules = await loadRules(); m.querySelector('#rlLoc').value = ''; m.querySelector('#rlCat').value = ''; showRules(); showToast('success', 'Rule saved', `${hit}${chit ? ' · ' + chit : ''} → ${S.people[to]}${to2 && to2 !== to ? ' + ' + S.people[to2] : ''}`);
+    };
+    m.addEventListener('click', async (e) => {
+      const id = e.target.dataset && e.target.dataset.rdel; if (!id) return;
+      if (!(await customConfirm('Remove this rule? Leads already assigned stay where they are.', { confirmText: 'Remove', danger: true }))) return;
+      const { data, error } = await sb().from('register_assign_rules').delete().eq('id', id).select('id');
+      if (error || !data || !data.length) { await customAlert(error ? nice(error.message) : 'Nothing was removed.', { title: 'Not removed', danger: true }); return; }
+      rules = await loadRules(); showRules();
+    });
+    m.querySelector('#rlApply').onclick = async (e) => {
+      if (!rules.length) { showToast('info', 'No rules', 'Add a rule first.'); return; }
+      const by = {}, st = {}; live().forEach(r => {
+        const hit = rules.filter(x => lc(x.location) === lc(r.location) && (!x.category || lc(x.category) === lc(r.category))).sort((a, b) => (b.category ? 1 : 0) - (a.category ? 1 : 0))[0];
+        if (!hit || ruleOwners(hit).includes(r.assigned_to)) return;       // already with one of the rule's owners: leave it
+        const to = ruleFor(r, rules, st); if (to) (by[to] = by[to] || []).push(r.id);
+      });
+      const total = Object.values(by).reduce((n, a) => n + a.length, 0);
+      if (!total) { showToast('info', 'Nothing to move', 'Every lead that matches a rule is already with the right person.'); return; }
+      const lines = Object.keys(by).map(t => `• ${by[t].length} to ${S.people[t]}`).join('\n');
+      if (!(await customConfirm(`Apply the rules?\n\n${lines}`, { confirmText: 'Apply' }))) return;
+      e.target.disabled = true; e.target.textContent = 'Applying…'; let done = 0, fail = 0;
+      for (const t of Object.keys(by)) { const r = await bulkUpdate(by[t], { assigned_to: t }); done += r.done; fail += r.fail; }
+      await reload(); e.target.disabled = false; e.target.textContent = 'Apply rules to existing leads'; refresh();
+      showToast(fail ? 'warning' : 'success', 'Rules applied', `${done} lead${done === 1 ? '' : 's'} moved${fail ? `, ${fail} could not be moved` : ''}.`);
+    };
+    m.querySelector('#flGo').onclick = async (e) => {
+      const by = {}; live().filter(r => !r.location && r.company).forEach(r => { const g = RegHelpers.guessLocation(r.company, locations()); if (g) (by[g] = by[g] || []).push(r.id); });
+      const total = Object.values(by).reduce((n, a) => n + a.length, 0); if (!total) return;
+      const top = Object.keys(by).sort((a, b) => by[b].length - by[a].length).slice(0, 8).map(k => `• ${k}: ${by[k].length}`).join('\n');
+      if (!(await customConfirm(`Set the location on ${total} lead${total === 1 ? '' : 's'}?\n\n${top}${Object.keys(by).length > 8 ? '\n…and more' : ''}`, { confirmText: 'Fill locations' }))) return;
+      e.target.disabled = true; e.target.textContent = 'Working…'; let done = 0, fail = 0;
+      for (const k of Object.keys(by)) { const r = await bulkUpdate(by[k], { location: k }); done += r.done; fail += r.fail; }
+      await reload(); e.target.disabled = false; e.target.textContent = 'Read locations from company addresses'; refresh();
+      showToast(fail ? 'warning' : 'success', 'Locations filled', `${done} lead${done === 1 ? '' : 's'} updated${fail ? `, ${fail} failed` : ''}.`);
+    };
+  }
+
+  /* ---------- admin: find & remove repeated leads (smart matching, optional merge) ---------- */
+  const MERGE_FIELDS = ['company', 'landline', 'email', 'lead_source', 'current_status', 'category', 'location', 'last_notes', 'intro_email_at'];
+  const FU_FIELDS = ['f1_date', 'f1_remarks', 'f2_date', 'f2_remarks', 'f3_date', 'f3_remarks'];
+  const has = (v) => v != null && String(v).trim() !== '';
+  // what the kept lead can take over from the repeats that are being removed (only gaps are filled, nothing is overwritten)
+  function mergePatch(keeper, repeats) {
+    const patch = {};
+    MERGE_FIELDS.forEach(k => { if (!has(keeper[k])) { const r = repeats.find(x => has(x[k])); if (r) patch[k] = r[k]; } });
+    if (!FU_FIELDS.some(k => has(keeper[k]))) { const r = repeats.find(x => FU_FIELDS.some(k => has(x[k]))); if (r) FU_FIELDS.forEach(k => { if (has(r[k])) patch[k] = r[k]; }); }
+    return patch;
+  }
   function openDedupe() {
     if (!S.admin) return;
     const m = modal(`<h3>Find repeated leads</h3>
-      <p class="sub">Finds leads that repeat the same details. One lead in each group is kept; the ticked ones are deleted (hidden, never destroyed — you can restore them with “Show deleted”). Every deletion is logged.</p>
+      <p class="sub">Finds leads that repeat the same person or business. One lead in each group is kept; the ticked ones are deleted (hidden, never destroyed — restore them with “Show deleted”). Every change is logged.</p>
       <div class="rg-form">
-        <label>Repeated when the same<select id="dpBy"><option value="email">Email</option><option value="namecomp">Client name + company</option><option value="company">Company</option><option value="name">Client name</option></select></label>
-        <label>Keep<select id="dpKeep"><option value="old">Oldest entry</option><option value="new">Newest entry</option><option value="full">Most complete entry</option></select></label>
+        <label>Look for<select id="dpBy"><option value="smart">Smart: same email, phone, or name + company (recommended)</option><option value="email">Same email</option><option value="phone">Same phone number (mobile or landline)</option><option value="namecomp">Same name + company</option><option value="company">Same company</option></select></label>
+        <label>Keep<select id="dpKeep"><option value="full">Most complete entry</option><option value="old">Oldest entry</option><option value="new">Newest entry</option></select></label>
       </div>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:.88rem"><input type="checkbox" id="dpMerge" checked style="margin-top:3px"><span>Fill gaps in the kept lead from the repeats first (missing email, notes, follow-ups, location…) — nothing already filled is overwritten.</span></label>
       <div style="margin-top:10px"><button class="rg-btn primary" id="dpScan" type="button">Find repeats</button></div>
       <div id="dpOut" style="margin-top:14px"></div>
       <div class="rg-modal-actions"><button class="rg-btn" data-close>Close</button><button class="rg-btn danger" id="dpDel" disabled>Delete ticked leads</button></div>`);
-    const norm = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9@.]+/g, ' ').trim();
-    const keyOf = (r, by) => by === 'email' ? norm(r.email) : by === 'company' ? norm(r.company) : by === 'name' ? norm(r.client_name) : (norm(r.client_name) && norm(r.company) ? norm(r.client_name) + '|' + norm(r.company) : '');
-    const filled = (r) => S.fields.filter(f => { const v = r[f.k]; return v != null && String(v).trim() !== ''; }).length;
+    const filled = (r) => S.fields.filter(f => has(r[f.k])).length;
     let shown = [];
     const upd = () => { const n = m.querySelectorAll('.dp-chk:checked').length; const b = m.querySelector('#dpDel'); b.disabled = !n; b.textContent = n ? `Delete ${n} ticked lead${n === 1 ? '' : 's'}` : 'Delete ticked leads'; };
-    m.querySelector('#dpScan').onclick = () => {
-      const by = m.querySelector('#dpBy').value, keep = m.querySelector('#dpKeep').value;
-      const groups = {};
-      S.rows.filter(r => !r.deleted_at).forEach(r => { const k = keyOf(r, by); if (k) (groups[k] = groups[k] || []).push(r); });
-      const reps = Object.values(groups).filter(g => g.length > 1);
-      reps.forEach(g => g.sort((a, b) => keep === 'new' ? (a.created_at < b.created_at ? 1 : -1) : keep === 'full' ? (filled(b) - filled(a)) || (a.created_at < b.created_at ? -1 : 1) : (a.created_at < b.created_at ? -1 : 1)));
-      const total = reps.reduce((n, g) => n + g.length - 1, 0);
-      const out = m.querySelector('#dpOut');
-      if (!reps.length) { out.innerHTML = '<p><b>No repeated leads found</b> for this setting.</p>'; shown = []; upd(); return; }
-      const lim = reps.slice(0, 150); shown = lim;
-      out.innerHTML = `<p><b>${reps.length}</b> group${reps.length === 1 ? '' : 's'} of repeats · <b>${total}</b> lead${total === 1 ? '' : 's'} can be removed${reps.length > lim.length ? ` (showing the first ${lim.length} groups — run it again after deleting to see the rest)` : ''}.</p>
-        <div style="overflow:auto;max-height:46vh"><table class="rg-table" style="white-space:nowrap"><thead><tr><th></th><th>Client</th><th>Mobile</th><th>Company</th><th>Email</th><th>Category</th><th>Owner</th><th>Entered</th></tr></thead><tbody>` +
-        lim.map(g => g.map((r, i) => `<tr style="${i === 0 ? 'border-top:2px solid var(--rg-line,#cbd5e1)' : ''}"><td>${i === 0 ? '<span class="rg-badge ok">Keep</span>' : `<input type="checkbox" class="dp-chk" data-id="${esc(r.id)}" checked>`}</td><td>${esc(r.client_name)}</td><td>${esc(r.mobile)}</td><td style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${esc(r.company || '')}</td><td>${esc(r.email || '')}</td><td>${esc(r.category || '')}</td><td>${esc(S.people[r.assigned_to] || '')}</td><td>${esc(dmy(r.lead_date || String(r.created_at).slice(0, 10)))}</td></tr>`).join('')).join('') + '</tbody></table></div>';
-      out.querySelectorAll('.dp-chk').forEach(c => c.onchange = upd); upd();
+    m.querySelector('#dpScan').onclick = (e) => {
+      const btn = e.target; btn.disabled = true; btn.textContent = 'Searching…';
+      setTimeout(() => {
+        const mode = m.querySelector('#dpBy').value, keep = m.querySelector('#dpKeep').value;
+        const reps = RegHelpers.findGroups(S.rows.filter(r => !r.deleted_at), mode);
+        reps.forEach(g => g.sort((a, b) => keep === 'new' ? (a.created_at < b.created_at ? 1 : -1) : keep === 'full' ? (filled(b) - filled(a)) || (a.created_at < b.created_at ? -1 : 1) : (a.created_at < b.created_at ? -1 : 1)));
+        reps.sort((a, b) => b.length - a.length);
+        const total = reps.reduce((n, g) => n + g.length - 1, 0);
+        const out = m.querySelector('#dpOut'); btn.disabled = false; btn.textContent = 'Find repeats';
+        if (!reps.length) { out.innerHTML = '<p><b>No repeated leads found</b> for this setting.</p>'; shown = []; upd(); return; }
+        const lim = reps.slice(0, 150); shown = lim;
+        out.innerHTML = `<p><b>${reps.length}</b> group${reps.length === 1 ? '' : 's'} of repeats · <b>${total}</b> lead${total === 1 ? '' : 's'} can be removed${reps.length > lim.length ? ` (showing the first ${lim.length} groups — run it again after deleting to see the rest)` : ''}. Untick any lead you want to keep.</p>
+          <div style="overflow:auto;max-height:46vh"><table class="rg-table" style="white-space:nowrap"><thead><tr><th></th><th>Client</th><th>Mobile</th><th>Company</th><th>Email</th><th>Location</th><th>Owner</th><th>Entered</th><th>Why</th></tr></thead><tbody>` +
+          lim.map((g, gi) => g.map((r, i) => `<tr style="${i === 0 ? 'border-top:2px solid var(--rg-line,#cbd5e1)' : ''}"><td>${i === 0 ? '<span class="rg-badge ok">Keep</span>' : `<input type="checkbox" class="dp-chk" data-id="${esc(r.id)}" data-g="${gi}" checked>`}</td><td>${esc(r.client_name)}</td><td>${esc(r.mobile)}</td><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${esc(r.company || '')}</td><td>${esc(r.email || '')}</td><td>${esc(r.location || '')}</td><td>${esc(S.people[r.assigned_to] || '')}</td><td>${esc(dmy(r.lead_date || String(r.created_at).slice(0, 10)))}</td><td style="color:var(--rg-muted)">${i === 0 ? (() => { const f = Object.keys(mergePatch(g[0], g.slice(1))); return f.length ? 'will gain: ' + esc(f.map(k => { const fd = S.fields.find(x => x.k === k); return fd ? fd.label : k; }).join(', ')) : ''; })() : esc(RegHelpers.why(g[0], r))}</td></tr>`).join('')).join('') + '</tbody></table></div>';
+        out.querySelectorAll('.dp-chk').forEach(c => c.onchange = upd); upd();
+      }, 30);
     };
     m.querySelector('#dpDel').onclick = async (e) => {
-      const ids = Array.from(m.querySelectorAll('.dp-chk:checked')).map(c => c.dataset.id); if (!ids.length) return;
-      if (!(await customConfirm(`Delete ${ids.length} repeated lead${ids.length === 1 ? '' : 's'}? They are hidden, not destroyed, and can be restored from “Show deleted”.`, { confirmText: 'Delete', danger: true }))) return;
-      e.target.disabled = true; e.target.textContent = 'Deleting…';
-      let done = 0, fail = 0; const now = new Date().toISOString();
-      for (let i = 0; i < ids.length; i += 100) {
-        const chunk = ids.slice(i, i + 100);
-        const { data, error } = await sb().from('follow_up_register').update({ deleted_at: now }).in('id', chunk).select('id');
-        if (error) fail += chunk.length; else { done += (data || []).length; fail += chunk.length - (data || []).length; }
+      const chk = Array.from(m.querySelectorAll('.dp-chk:checked')); if (!chk.length) return;
+      const merge = m.querySelector('#dpMerge').checked;
+      if (!(await customConfirm(`Delete ${chk.length} repeated lead${chk.length === 1 ? '' : 's'}${merge ? ' after filling gaps in the kept leads' : ''}? They are hidden, not destroyed, and can be restored from “Show deleted”.`, { confirmText: 'Delete', danger: true }))) return;
+      e.target.disabled = true; e.target.textContent = 'Working…';
+      const byGroup = {}; chk.forEach(c => { (byGroup[c.dataset.g] = byGroup[c.dataset.g] || []).push(c.dataset.id); });
+      let merged = 0; const ids = [];
+      for (const gi of Object.keys(byGroup)) {
+        const g = shown[+gi]; const del = byGroup[gi];
+        if (merge) {
+          const patch = mergePatch(g[0], g.filter(x => del.includes(x.id)));
+          if (Object.keys(patch).length) {
+            const { data, error } = await sb().from('follow_up_register').update(patch).eq('id', g[0].id).select('id');
+            if (error || !data || !data.length) continue;          // could not fill the kept lead: leave this group untouched
+            merged++;
+          }
+        }
+        del.forEach(id => ids.push(id));
       }
+      const r = await bulkUpdate(ids, { deleted_at: new Date().toISOString() });
       m.remove(); await reload();
-      showToast(fail ? 'warning' : 'success', 'Repeated leads removed', `${done} deleted${fail ? `, ${fail} could not be deleted` : ''}.`);
+      showToast(r.fail || ids.length < chk.length ? 'warning' : 'success', 'Repeated leads removed', `${r.done} deleted${merged ? `, ${merged} kept lead${merged === 1 ? '' : 's'} updated` : ''}${(r.fail || ids.length < chk.length) ? `, ${r.fail + chk.length - ids.length} skipped` : ''}.`);
     };
   }
   function openReassign(id) {
@@ -700,16 +980,17 @@ const RegisterApp = (() => {
       <label class="rg-field"><span>Status</span><select id="fStatus">${o(S.opts.current_status || [], S.f.status, 'All')}</select></label>
       <label class="rg-field"><span>Source</span><select id="fSource">${o(S.opts.lead_source || [], S.f.source, 'All')}</select></label>
       <label class="rg-field"><span>Category</span><select id="fCategory">${o(categories(), S.f.category, 'All')}</select></label>
+      <label class="rg-field"><span>Location</span><select id="fLocation"><option value="">All</option></select></label>
       <label class="rg-field"><span>Owner</span><select id="fOwner"><option value="all">Everyone</option><option value="me" ${S.f.owner === 'me' ? 'selected' : ''}>Mine only</option>${S.admin ? people.map(p => `<option value="${p.id}" ${S.f.owner === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('') : ''}</select></label>
-      <label class="rg-field"><span>Sort</span><select id="fSort">${[['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'Client A–Z'], ['next', 'Next follow-up'], ['category', 'Category A–Z'], ['categorydesc', 'Category Z–A']].concat(S.admin ? [['owner', 'Employee A–Z'], ['ownerdesc', 'Employee Z–A']] : []).map(([v, l]) => `<option value="${v}" ${S.f.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-      ${S.admin ? `<label class="rg-field"><span>Group</span><select id="fGroup"><option value="0">No grouping</option><option value="1" ${S.f.group ? 'selected' : ''}>By employee</option></select></label>` : ''}
+      <label class="rg-field"><span>Sort</span><select id="fSort">${[['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'Client A–Z'], ['next', 'Next follow-up'], ['category', 'Category A–Z'], ['categorydesc', 'Category Z–A'], ['location', 'Location A–Z'], ['locationdesc', 'Location Z–A']].concat(S.admin ? [['owner', 'Employee A–Z'], ['ownerdesc', 'Employee Z–A']] : []).map(([v, l]) => `<option value="${v}" ${S.f.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      ${S.admin ? `<label class="rg-field"><span>Group</span><select id="fGroup"><option value="">No grouping</option><option value="owner" ${S.f.group === 'owner' ? 'selected' : ''}>By employee</option><option value="location" ${S.f.group === 'location' ? 'selected' : ''}>By location</option><option value="category" ${S.f.group === 'category' ? 'selected' : ''}>By category</option></select></label>` : ''}
       ${S.admin ? `<label class="rg-field"><span>Deleted</span><select id="fDeleted"><option value="0">Hide</option><option value="1" ${S.f.showDeleted ? 'selected' : ''}>Show</option></select></label>` : ''}
       <span class="rg-spacer" style="flex:1"></span>
       <button class="rg-btn primary" data-act="add">＋ Add lead</button>
       ${S.admin ? '<button class="rg-btn" data-act="xlsx">⬇ Excel</button><button class="rg-btn" data-act="pdf">⬇ PDF</button>' : ''}
       <button class="rg-btn" data-act="report" ${S.perms.can_save ? '' : 'disabled title="Saving reports is switched off for your account"'}>Save as report</button>
       <button class="rg-btn" data-act="reports">Saved reports</button>
-      ${S.admin ? '<button class="rg-btn" data-act="import">⬆ Import Excel</button><button class="rg-btn" data-act="dedupe">🧹 Find repeats</button>' : (S.importUsed ? '' : '<button class="rg-btn" data-act="import1" title="Works only once">⬆ One-time Excel import</button>')}
+      ${S.admin ? '<button class="rg-btn" data-act="import">⬆ Import Excel</button><button class="rg-btn" data-act="dedupe">🧹 Find repeats</button><button class="rg-btn" data-act="assign">📍 Assign by location</button>' : (S.importUsed ? '' : '<button class="rg-btn" data-act="import1" title="Works only once">⬆ One-time Excel import</button>')}
     </div>`;
   }
   function wireToolbar() {
@@ -721,11 +1002,12 @@ const RegisterApp = (() => {
     $('fBasis').onclick = (e) => { const b = e.target.dataset.b; if (!b) return; S.f.basis = b; [...$('fBasis').children].forEach(x => x.classList.toggle('active', x.dataset.b === b)); apply(); };
     let tm; $('fQ').oninput = (e) => { clearTimeout(tm); tm = setTimeout(() => { S.f.q = e.target.value; apply(); }, 200); };
     $('fStatus').onchange = (e) => { S.f.status = e.target.value; apply(); };
+    $('fLocation').onchange = (e) => { S.f.location = e.target.value; apply(); };
     $('fCategory').onchange = (e) => { S.f.category = e.target.value; apply(); };
     $('fSource').onchange = (e) => { S.f.source = e.target.value; apply(); };
     $('fOwner').onchange = (e) => { S.f.owner = e.target.value; apply(); };
     $('fSort').onchange = (e) => { S.f.sort = e.target.value; apply(); };
-    if ($('fGroup')) $('fGroup').onchange = (e) => { S.f.group = e.target.value === '1'; apply(); };
+    if ($('fGroup')) $('fGroup').onchange = (e) => { S.f.group = e.target.value; apply(); };
     if ($('fDeleted')) $('fDeleted').onchange = (e) => { S.f.showDeleted = e.target.value === '1'; apply(); };
   }
 
@@ -768,6 +1050,7 @@ const RegisterApp = (() => {
       if (/call\s*\/?\s*e-?mail|date\s*&\s*time/.test(h)) return 'intro_email_at';
       if (/status/.test(h)) return 'current_status';
       if (/categor/.test(h)) return 'category';
+      if (/^(location|city|place|town|area)$|^(lead )?(location|city|place)\b/.test(h)) return 'location';
       if (/1st.*date|first.*date/.test(h)) return 'f1_date';
       if (/2nd.*date|second.*date/.test(h)) return 'f2_date';
       if (/3rd.*date|third.*date/.test(h)) return 'f3_date';
@@ -795,7 +1078,7 @@ const RegisterApp = (() => {
       const o = { __line: line, client_name: String(g('client_name')).trim(), company: String(g('company')).trim() || null, mobile: mob,
         landline: String(g('landline')).trim() || null, email: String(g('email')).trim() || null, lead_source: String(g('lead_source')).trim() || null,
         lead_time: String(g('lead_time')).trim() || null, intro_email_sent: /^y/i.test(String(g('intro_email_sent'))) ? 'Yes' : 'No',
-        intro_email_at: toStamp(g('intro_email_at')), current_status: String(g('current_status')).trim() || null, category: String(g('category')).trim() || null,
+        intro_email_at: toStamp(g('intro_email_at')), current_status: String(g('current_status')).trim() || null, category: String(g('category')).trim() || null, location: String(g('location')).trim() || null,
         last_notes: String(g('last_notes')).trim() || null, outcome: String(g('outcome')).trim() || null };
       const ld = toISO(g('lead_date')); if (ld) o.lead_date = ld;
       for (let n = 1; n <= 3; n++) { o['f' + n + '_date'] = toISO(g('f' + n + '_date')); o['f' + n + '_remarks'] = String(g('f' + n + '_remarks')).trim() || null; }
@@ -806,8 +1089,9 @@ const RegisterApp = (() => {
       }
       return o;
     });
-    const LBL = { lead_date: 'Date', lead_time: 'Time', client_name: 'Client Name', company: 'Company', mobile: 'Mobile No', landline: 'Landline', email: 'Email', lead_source: 'Lead Source', intro_email_sent: 'Introductory Email', intro_email_at: 'Call/Email Date', current_status: 'Current Status', category: 'Category', last_notes: 'Notes', f1_date: '1st follow-up date', f2_date: '2nd follow-up date', f3_date: '3rd follow-up date', f1_remarks: '1st remarks', f2_remarks: '2nd remarks', f3_remarks: '3rd remarks', outcome: 'Outcome' };
-    rows.__info = { matched: Object.keys(map).map(k => LBL[k] || k), unknown, noName: map.client_name == null, noMobile: map.mobile == null };
+    let guessed = 0; rows.forEach(o => { if (!o.location) { const g = RegHelpers.guessLocation(o.company || '', locations()); if (g) { o.location = g; guessed++; } } });
+    const LBL = { lead_date: 'Date', lead_time: 'Time', client_name: 'Client Name', company: 'Company', mobile: 'Mobile No', landline: 'Landline', email: 'Email', lead_source: 'Lead Source', intro_email_sent: 'Introductory Email', intro_email_at: 'Call/Email Date', current_status: 'Current Status', category: 'Category', location: 'Location', last_notes: 'Notes', f1_date: '1st follow-up date', f2_date: '2nd follow-up date', f3_date: '3rd follow-up date', f1_remarks: '1st remarks', f2_remarks: '2nd remarks', f3_remarks: '3rd remarks', outcome: 'Outcome' };
+    rows.__info = { guessed, matched: Object.keys(map).map(k => LBL[k] || k), unknown, noName: map.client_name == null, noMobile: map.mobile == null };
     return rows;
   }
   // the same checks the database applies, so people see problems BEFORE anything is saved
@@ -820,6 +1104,8 @@ const RegisterApp = (() => {
     if (seen.has(key)) return 'Duplicate — same mobile number appears earlier in the file';
     if (S.rows.some(r => !r.deleted_at && String(r.mobile).replace(/\D/g, '').slice(-10) === key)) return 'Duplicate — mobile number is already in the register';
     if (o.landline && !/^[0-9+\-\s()]{6,20}$/.test(o.landline)) return 'Landline looks invalid';
+    const clash = RegHelpers.importClash(o, S._dupIdx || (S._dupIdx = RegHelpers.buildIndex(S.rows.filter(r => !r.deleted_at))), seen);
+    if (clash.why) return clash.why;
     if (o.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email)) return 'Email looks invalid';
     const bad = dropdown('lead_source', 'lead_source', 'Lead source') || dropdown('current_status', 'current_status', 'Status') ||  dropdown('lead_time', 'time_slot', 'Time') || dropdown('outcome', 'outcome', 'Outcome');
     if (bad) return bad;
@@ -832,7 +1118,7 @@ const RegisterApp = (() => {
       if (d < prev) return `Follow-up ${n} date is before the previous date`;
       prev = d;
     }
-    seen.add(key); return '';
+    seen.add(key); clash.remember(); return '';
   }
   function downloadLeftOut(parsed, probs) {
     const rows = parsed.map((o, i) => probs[i] ? { 'Excel row': o.__line, 'Client Name': o.client_name, 'Mobile No': o.mobile, 'Company': o.company || '', 'Reason left out': probs[i] } : null).filter(Boolean);
@@ -841,7 +1127,7 @@ const RegisterApp = (() => {
   }
   function importPreviewHtml(parsed, probs) {
     const info = parsed.__info || { matched: [], unknown: [] };
-    const infoHtml = `<p style="font-size:12.5px;color:var(--rg-muted)"><b>Columns matched automatically:</b> ${info.matched.length ? esc(info.matched.join(', ')) : 'none'}${info.unknown.length ? `<br><b>Not matched (ignored):</b> ${esc(info.unknown.join(', '))}` : ''}${info.noName || info.noMobile ? `<br><b style="color:var(--rg-bad)">No ${info.noName ? '“Client Name”' : ''}${info.noName && info.noMobile ? ' or ' : ''}${info.noMobile ? '“Mobile No”' : ''} column found, so those rows cannot be imported.</b>` : ''}</p>`;
+    const infoHtml = `<p style="font-size:12.5px;color:var(--rg-muted)"><b>Columns matched automatically:</b> ${info.matched.length ? esc(info.matched.join(', ')) : 'none'}${info.guessed ? `<br><b>Location read from the company address</b> for ${info.guessed} lead${info.guessed === 1 ? '' : 's'}` : ''}${info.unknown.length ? `<br><b>Not matched (ignored):</b> ${esc(info.unknown.join(', '))}` : ''}${info.noName || info.noMobile ? `<br><b style="color:var(--rg-bad)">No ${info.noName ? '“Client Name”' : ''}${info.noName && info.noMobile ? ' or ' : ''}${info.noMobile ? '“Mobile No”' : ''} column found, so those rows cannot be imported.</b>` : ''}</p>`;
     const bad = probs.filter(Boolean).length;
     const nDup = probs.filter(x => /^Duplicate/.test(x)).length, nMiss = probs.filter(x => /^Missing/.test(x)).length;
     const breakdown = bad ? `<p style="font-size:12.5px;margin:0 0 6px">Left out: <b>${nDup}</b> duplicate · <b>${nMiss}</b> missing a required field · <b>${bad - nDup - nMiss}</b> other problems. <button class="rg-btn sm" id="imLeft" type="button">⬇ Download left-out rows</button></p>` : '';
@@ -852,11 +1138,12 @@ const RegisterApp = (() => {
 
   // Admin import — unlimited, assigned to any marketing user
   function openImport() {
+    S._dupIdx = null;
     const people = S.peopleList.filter(p => p.role === 'marketing' || p.role === 'admin');
     const m = modal(`<h3>Import leads from Excel / CSV</h3>
       <p class="sub">Use the same headings as the register. A preview shows any problems before anything is saved.</p>
       <div class="rg-form"><label>File<input type="file" id="imFile" accept=".xlsx,.xls,.csv"></label>
-      <label>Assign imported leads to<select id="imOwner">${people.map(p => `<option value="${p.id}">${esc(p.name)} (${p.role})</option>`).join('')}</select></label></div>
+      <label>Assign imported leads to<select id="imOwner"><option value="__rules">By saved location rules (no rule → me)</option>${people.map(p => `<option value="${p.id}">${esc(p.name)} (${p.role})</option>`).join('')}</select></label></div>
       <div id="imPreview" style="margin-top:14px"></div>
       <div class="rg-modal-actions"><button class="rg-btn" data-close>Close</button><button class="rg-btn primary" id="imGo" disabled>Import</button></div>`);
     let parsed = [], probs = [];
@@ -869,10 +1156,13 @@ const RegisterApp = (() => {
     };
     m.querySelector('#imGo').onclick = async (e) => {
       const owner = m.querySelector('#imOwner').value; e.target.disabled = true; e.target.textContent = 'Importing…'; m.querySelector('#imPreview').innerHTML = '<div style="padding:18px;text-align:center;font-weight:600">⏳ Importation is under process… please wait and do not close this window.</div>'; m.querySelectorAll('[data-close]').forEach(b => b.disabled = true);
+      const rules = owner === '__rules' ? await loadRules() : [];
+      const rstate = {};
+      const ownerFor = (i) => owner === '__rules' ? (ruleFor(parsed[i], rules, rstate) || S.me) : owner;
       let ok = 0; const fails = [];
       const prog = m.querySelector('#imPreview > div');
       const idxs = []; parsed.forEach((o, i) => { if (probs[i]) fails.push(`Row ${o.__line} (${o.client_name || 'no name'}) — ${probs[i]}`); else idxs.push(i); });
-      const mk = (i) => { const o = Object.assign({}, parsed[i]); delete o.__line; return Object.assign({}, o, { assigned_to: owner, created_by: S.me }); };
+      const mk = (i) => { const o = Object.assign({}, parsed[i]); delete o.__line; return Object.assign({}, o, { assigned_to: ownerFor(i), created_by: S.me }); };
       for (let c = 0; c < idxs.length; c += 200) {
         const chunk = idxs.slice(c, c + 200);
         const { error } = await sb().from('follow_up_register').insert(chunk.map(mk));
@@ -891,6 +1181,7 @@ const RegisterApp = (() => {
 
   // Marketing import — works exactly ONCE per person, enforced by the database
   function openOneTimeImport() {
+    S._dupIdx = null;
     const m = modal(`<h3>One-time Excel import</h3>
       <p class="sub">Bring your existing Follow-Up Register sheet into the portal. <b>You can do this only once.</b> Afterwards this option disappears and only an admin can re-open it. Check the preview carefully.</p>
       <div class="rg-form"><label class="wide">Excel / CSV file (first sheet, headings in row 1)<input type="file" id="imFile" accept=".xlsx,.xls,.csv"></label></div>
@@ -957,7 +1248,7 @@ const RegisterApp = (() => {
       else if (a === 'sortowner') { S.f.sort = S.f.sort === 'owner' ? 'ownerdesc' : 'owner'; const fs = document.getElementById('fSort'); if (fs) fs.value = S.f.sort; S.page = 0; render(); }
       else if (a === 'prev') { S.page--; render(); } else if (a === 'next') { S.page++; render(); }
       else if (a === 'xlsx') downloadExcel(); else if (a === 'pdf') downloadPdf(); else if (a === 'report') saveReport();
-      else if (a === 'reports') openReports(); else if (a === 'import') openImport(); else if (a === 'dedupe') openDedupe(); else if (a === 'import1') { if (!S.importUsed) openOneTimeImport(); }
+      else if (a === 'reports') openReports(); else if (a === 'import') openImport(); else if (a === 'dedupe') openDedupe(); else if (a === 'assign') openAssign(); else if (a === 'import1') { if (!S.importUsed) openOneTimeImport(); }
     });
     setInterval(refreshQuiet, 120000);
     document.getElementById('rgSaveBtn').onclick = saveAll; document.getElementById('rgDiscardBtn').onclick = discardAll;
