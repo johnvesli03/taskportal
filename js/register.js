@@ -2,7 +2,7 @@
    Pure helpers — place (location) reading and smart duplicate matching
    ============================================================ */
 const RegHelpers = (() => {
-  const CITIES = ['Mumbai', 'Navi Mumbai', 'Thane', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Delhi', 'Noida', 'Gurugram', 'Faridabad', 'Ghaziabad', 'Greater Noida', 'Chandigarh', 'Mohali', 'Panchkula', 'Ludhiana', 'Amritsar', 'Jalandhar', 'Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer', 'Lucknow', 'Kanpur', 'Agra', 'Varanasi', 'Prayagraj', 'Meerut', 'Dehradun', 'Haridwar', 'Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Raipur', 'Bilaspur', 'Patna', 'Ranchi', 'Jamshedpur', 'Kolkata', 'Howrah', 'Siliguri', 'Bhubaneswar', 'Cuttack', 'Guwahati', 'Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Gandhinagar', 'Bengaluru', 'Mysuru', 'Mangaluru', 'Hubballi', 'Belagavi', 'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Erode', 'Vellore', 'Hyderabad', 'Secunderabad', 'Warangal', 'Karimnagar', 'Nizamabad', 'Visakhapatnam', 'Vijayawada', 'Guntur', 'Tirupati', 'Chittoor', 'Nellore', 'Kurnool', 'Kadapa', 'Anantapur', 'Rajahmundry', 'Kakinada', 'Kochi', 'Thiruvananthapuram', 'Kozhikode', 'Thrissur', 'Kollam', 'Kannur', 'Goa', 'Panaji', 'Margao', 'Puducherry', 'Shimla', 'Jammu', 'Srinagar', 'Hosur', 'Puttur', 'Palakkad', 'Tumakuru', 'Davangere', 'Ballari', 'Shivamogga', 'Udupi', 'Dubai', 'Abu Dhabi', 'Sharjah', 'Singapore', 'London', 'New York'];
+  const CITIES = ['Mumbai', 'Navi Mumbai', 'Thane', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Delhi', 'Noida', 'Gurugram', 'Faridabad', 'Ghaziabad', 'Greater Noida', 'Chandigarh', 'Mohali', 'Panchkula', 'Ludhiana', 'Amritsar', 'Jalandhar', 'Jaipur', 'Jodhpur', 'Udaipur', 'Kota', 'Ajmer', 'Lucknow', 'Kanpur', 'Agra', 'Varanasi', 'Prayagraj', 'Meerut', 'Dehradun', 'Haridwar', 'Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Raipur', 'Bilaspur', 'Patna', 'Ranchi', 'Jamshedpur', 'Kolkata', 'Howrah', 'Siliguri', 'Bhubaneswar', 'Cuttack', 'Guwahati', 'Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Gandhinagar', 'Bengaluru', 'Mysuru', 'Mangaluru', 'Hubballi', 'Belagavi', 'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Erode', 'Vellore', 'Hyderabad', 'Secunderabad', 'Warangal', 'Karimnagar', 'Nizamabad', 'Visakhapatnam', 'Vijayawada', 'Guntur', 'Tirupati', 'Chittoor', 'Nellore', 'Kurnool', 'Kadapa', 'Anantapur', 'Rajahmundry', 'Kakinada', 'Kochi', 'Thiruvananthapuram', 'Kozhikode', 'Thrissur', 'Kollam', 'Kannur', 'Goa', 'Panaji', 'Margao', 'Puducherry', 'Shimla', 'Jammu', 'Srinagar', 'Hosur', 'Puttur', 'Palakkad', 'Tumakuru', 'Davangere', 'Ballari', 'Shivamogga', 'Udupi', 'Vasai', 'Virar', 'Kalyan', 'Dombivli', 'Panvel', 'Bhiwandi', 'Mira Road', 'Kolhapur', 'Solapur', 'Sangli', 'Satara', 'Amravati', 'Akola', 'Latur', 'Jalgaon', 'Dhule', 'Ahmednagar', 'Pimpri Chinchwad', 'Alwar', 'Bikaner', 'Bhilwara', 'Sikar', 'Gorakhpur', 'Bareilly', 'Aligarh', 'Moradabad', 'Saharanpur', 'Mathura', 'Jhansi', 'Rudrapur', 'Haldwani', 'Rohtak', 'Hisar', 'Karnal', 'Panipat', 'Sonipat', 'Ambala', 'Bhiwadi', 'Bathinda', 'Patiala', 'Dhanbad', 'Bokaro', 'Gaya', 'Muzaffarpur', 'Bhagalpur', 'Durgapur', 'Asansol', 'Rourkela', 'Sambalpur', 'Berhampur', 'Bhilai', 'Korba', 'Ujjain', 'Dewas', 'Sagar', 'Satna', 'Rewa', 'Bhavnagar', 'Jamnagar', 'Junagadh', 'Anand', 'Bharuch', 'Vapi', 'Valsad', 'Navsari', 'Morbi', 'Gandhidham', 'Thanjavur', 'Dindigul', 'Karur', 'Tiruppur', 'Kanchipuram', 'Nagercoil', 'Thoothukudi', 'Alappuzha', 'Kottayam', 'Malappuram', 'Idukki', 'Kasaragod', 'Gulbarga', 'Kalaburagi', 'Bidar', 'Hassan', 'Mandya', 'Chikkamagaluru', 'Bellary', 'Vijayanagar', 'Ongole', 'Eluru', 'Machilipatnam', 'Khammam', 'Mahbubnagar', 'Adilabad', 'Imphal', 'Shillong', 'Agartala', 'Aizawl', 'Gangtok', 'Itanagar', 'Dimapur', 'Kohima', 'Silvassa', 'Daman', 'Dubai', 'Abu Dhabi', 'Sharjah', 'Singapore', 'London', 'New York'];
   const ALIAS = { bombay: 'Mumbai', bangalore: 'Bengaluru', bengaluru: 'Bengaluru', madras: 'Chennai', calcutta: 'Kolkata', gurgaon: 'Gurugram', trivandrum: 'Thiruvananthapuram', cochin: 'Kochi', vizag: 'Visakhapatnam', poona: 'Pune', baroda: 'Vadodara', mysore: 'Mysuru', mangalore: 'Mangaluru', 'new delhi': 'Delhi', allahabad: 'Prayagraj', trichy: 'Tiruchirappalli', calicut: 'Kozhikode', hubli: 'Hubballi', belgaum: 'Belagavi', bhubaneshwar: 'Bhubaneswar', pondicherry: 'Puducherry', ernakulam: 'Kochi', tirupathi: 'Tirupati', hydrabad: 'Hyderabad' };
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const title = (s) => s.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
@@ -16,6 +16,10 @@ const RegHelpers = (() => {
     cacheList = Object.keys(map).map(k => ({ name: map[k], len: k.length, re: new RegExp('(^|[^a-z])' + esc(k) + '(?=[^a-z]|$)', 'gi') }));
     cacheKey = key; return cacheList;
   }
+  // 3-digit (or 4-digit) PIN prefix -> city; used when the address names no city but gives a PIN code
+  const PIN = { '400': 'Mumbai', '4006': 'Thane', '4007': 'Navi Mumbai', '411': 'Pune', '412': 'Pune', '422': 'Nashik', '431': 'Aurangabad', '440': 'Nagpur', '110': 'Delhi', '122': 'Gurugram', '121': 'Faridabad', '160': 'Chandigarh', '141': 'Ludhiana', '302': 'Jaipur', '342': 'Jodhpur', '313': 'Udaipur', '324': 'Kota', '305': 'Ajmer', '226': 'Lucknow', '282': 'Agra', '248': 'Dehradun', '462': 'Bhopal', '452': 'Indore', '474': 'Gwalior', '492': 'Raipur', '800': 'Patna', '834': 'Ranchi', '700': 'Kolkata', '751': 'Bhubaneswar', '781': 'Guwahati', '380': 'Ahmedabad', '382': 'Gandhinagar', '395': 'Surat', '390': 'Vadodara', '360': 'Rajkot', '560': 'Bengaluru', '570': 'Mysuru', '575': 'Mangaluru', '580': 'Hubballi', '590': 'Belagavi', '600': 'Chennai', '641': 'Coimbatore', '625': 'Madurai', '620': 'Tiruchirappalli', '500': 'Hyderabad', '530': 'Visakhapatnam', '520': 'Vijayawada', '682': 'Kochi', '695': 'Thiruvananthapuram', '673': 'Kozhikode', '680': 'Thrissur', '691': 'Kollam', '403': 'Goa', '605': 'Puducherry', '171': 'Shimla', '180': 'Jammu', '190': 'Srinagar' };
+  const NOISE = /\b(road|rd|street|st|nagar|colony|floor|building|plot|no|opp|opposite|near|behind|sector|phase|block|lane|complex|tower|plaza|market|chowk|cross|main|avenue|park|layout|extension|area|estate|office|shop|flat|house|ward|wing|society|industrial|apartment|apartments|chambers|centre|center|house|mall|square|marg|path|highway|nh|opp\.|dist|district|tal|taluka|state|india)\b/i;
+  const cleanSeg = (x) => x.replace(/\b(dist(rict)?|tal(uka)?|city|pin(code)?)\b\.?:?/gi, ' ').replace(/[^A-Za-z .]/g, ' ').replace(/\s+/g, ' ').trim();
   // "Plot 5, Andheri East, Mumbai 400069"  ->  "Mumbai"
   function guessLocation(text, learned) {
     const t = String(text || ''); if (t.trim().length < 3) return null;
@@ -28,10 +32,19 @@ const RegHelpers = (() => {
       if (!best || end > best.end || (end === best.end && c.len > best.len)) best = { name: c.name, end, len: c.len };
     });
     if (best) return best.name;
-    const pin = t.match(/\b[1-9]\d{2}\s?\d{3}\b/);
+    const pin = t.match(/(?:^|[^0-9])([1-9]\d{2})\s?(\d{3})(?![0-9])/);
     if (pin) {
-      const seg = t.slice(0, pin.index).split(/[,\-–|\n]/).map(x => x.trim()).filter(Boolean).pop() || '';
-      if (/^[A-Za-z][A-Za-z .]{2,29}$/.test(seg) && !/\b(road|rd|street|st|nagar|colony|floor|building|plot|no|opp|near|behind|sector|phase|block|lane|complex|tower|plaza|market|chowk|cross|main|avenue|park|layout|extension|area|estate)\b/i.test(seg)) return title(seg);
+      const idx = t.indexOf(pin[0]) + (pin[0].length - pin[1].length - pin[2].length - (/\s/.test(pin[0].slice(-4, -3)) ? 1 : 0));
+      const code = PIN[pin[1] + pin[2][0]] || PIN[pin[1]];
+      if (code) return code;
+      const seg = cleanSeg(t.slice(0, Math.max(0, idx)).split(/[,\-–|\n]/).map(x => x.trim()).filter(Boolean).pop() || '');
+      if (/^[A-Za-z][A-Za-z .]{2,29}$/.test(seg) && !NOISE.test(seg)) return title(seg);
+    }
+    // no PIN: a short last part of the address that looks like a place name ("…, Station Road, Sangamner")
+    const parts = t.split(/[,\n|]/).map(cleanSeg).filter(Boolean);
+    for (let i = parts.length - 1; i >= Math.max(1, parts.length - 2); i--) {
+      const seg = parts[i];
+      if (/^[A-Za-z][A-Za-z .]{2,24}$/.test(seg) && seg.split(' ').length <= 2 && !NOISE.test(seg) && !/\b(pvt|ltd|llp|limited|private|co|company|services|solutions|associates|consultants|enterprises|traders|hospital|clinic|bank|school|college)\b/i.test(seg)) return title(seg);
     }
     return null;
   }
@@ -299,6 +312,21 @@ const RegisterApp = (() => {
       all = all.concat(data); from += data.length;
     }
     return { data: all, error: null };
+  }
+  // Reads the place from the company address for every lead that has none, and saves it (once per page open)
+  let autoFillBusy = false;
+  async function autoFillLocations(quiet) {
+    if (autoFillBusy) return 0; autoFillBusy = true;
+    try {
+      const by = {}; S.rows.filter(r => !r.deleted_at && !r.location && r.company && (S.admin || isMine(r))).forEach(r => { const g = RegHelpers.guessLocation(r.company, locations()); if (g) (by[g] = by[g] || []).push(r); });
+      let n = 0;
+      for (const k of Object.keys(by)) {
+        const r = await bulkUpdate(by[k].map(x => x.id), { location: k });
+        if (r.done) { by[k].forEach(x => { if (!x.location) x.location = k; }); n += r.done; }
+      }
+      if (n) { render(); if (!quiet) showToast('success', 'Locations filled', `Location was read from the address for ${n} lead${n === 1 ? '' : 's'}.`); }
+      return n;
+    } catch (e) { return 0; } finally { autoFillBusy = false; }
   }
   async function loadAll() {
     const [rows, cols, sets, people, perm, imp] = await Promise.all([
@@ -1272,6 +1300,7 @@ const RegisterApp = (() => {
     document.addEventListener('click', (e) => { if (!e.target.closest('#rgMenu') && !e.target.closest('[data-act="menu"]')) closeMenu(); });
     window.addEventListener('beforeunload', (e) => { if (dirtyIds().length) { e.preventDefault(); e.returnValue = ''; } });
     render();
+    autoFillLocations();
     // A marketing user who typed a task-portal URL is sent back here with a notice.
     let blocked = null; try { blocked = sessionStorage.getItem('rg-blocked'); sessionStorage.removeItem('rg-blocked'); } catch (e) {}
     if (blocked && !S.admin) {
