@@ -206,7 +206,7 @@ const RegisterApp = (() => {
     const d = S.drafts[r.id] || {};
     return !Object.keys(d).some(k => String(d[k] || '').trim() !== '' && !(k === 'intro_email_sent'));
   }
-  const isMine = (r) => r.created_by === S.me || r.assigned_to === S.me;
+  const isMine = (r) => r.created_by === S.me || r.assigned_to === S.me || r.assigned_to2 === S.me;
   const isLocked24 = (r) => !r.__new && new Date(r.created_at).getTime() < Date.now() - 864e5 && !(r.unlocked_until && new Date(r.unlocked_until) > new Date());
 
   /* ---------- editable? ---------- */
@@ -261,7 +261,7 @@ const RegisterApp = (() => {
       if (f.category && r.category !== f.category) return false;
       if (f.location && (f.location === '__none' ? !!r.location : r.location !== f.location)) return false;
       if (f.owner === 'me' && !isMine(r)) return false;
-      if (f.owner && f.owner !== 'all' && f.owner !== 'me' && r.assigned_to !== f.owner) return false;
+      if (f.owner && f.owner !== 'all' && f.owner !== 'me' && r.assigned_to !== f.owner && r.assigned_to2 !== f.owner) return false;
       if (q) {
         const hay = [r.client_name, r.company, r.mobile, r.email, r.landline, r.last_notes, r.f1_remarks, r.f2_remarks, r.f3_remarks].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
@@ -366,7 +366,7 @@ const RegisterApp = (() => {
       else inner = inputHtml(row, f, !!why);
       h += `<td class="${f.cls || ''} ${why ? 'ro' : ''} ${dirty ? 'dirty' : ''}" ${why ? `title="${esc(why)}"` : ''} data-label="${esc(f.fu && f.kind === 'rem' ? (['', '1st', '2nd', '3rd'][f.fu] + ' remarks') : f.label)}">${inner}</td>`;
     });
-    h += `<td class="c-meta" data-label="Owner">${esc(S.people[row.assigned_to] || (row.__new ? (S.admin ? '' : (S.people[S.me] || 'You')) : ''))}${row.__new && S.admin ? ownerSelect(row) : ''}</td>`;
+    h += `<td class="c-meta" data-label="Owner">${esc([S.people[row.assigned_to] || (row.__new ? (S.admin ? '' : (S.people[S.me] || 'You')) : ''), row.assigned_to2 ? S.people[row.assigned_to2] : ''].filter(Boolean).join(' + '))}${row.__new && S.admin ? ownerSelect(row) : ''}</td>`;
     h += `<td class="c-meta c-status" data-label="Status">${metaHtml(row)}</td>`;
     h += `<td class="c-meta" data-label="Actions"><button class="rg-btn sm" data-act="menu" data-id="${esc(row.id)}">⋯</button></td>`;
     return h + '</tr>';
@@ -649,6 +649,13 @@ const RegisterApp = (() => {
     return n % 2 ? r.assignee : r.assignee2;
   }
   const ruleOwners = (r) => [r.assignee, r.assignee2].filter(x => x && x !== undefined);
+  // where a lead goes under the rules: { a: owner, b: second owner or null }
+  function ruleTarget(row, rules, state) {
+    const hit = rules.filter(r => lc(r.location) === lc(row.location) && (!r.category || lc(r.category) === lc(row.category))).sort((a, b) => (b.category ? 1 : 0) - (a.category ? 1 : 0))[0];
+    if (!hit) return null;
+    if (hit.share && hit.assignee2 && hit.assignee2 !== hit.assignee) return { a: hit.assignee, b: hit.assignee2, rule: hit };
+    return { a: ruleFor(row, rules, state), b: null, rule: hit };
+  }
   async function bulkUpdate(ids, patch, onProgress) {
     let done = 0, fail = 0;
     for (let i = 0; i < ids.length; i += 100) {
@@ -672,7 +679,8 @@ const RegisterApp = (() => {
           <label>Category<select id="asCat"></select></label>
           <label>Currently with<select id="asFrom"><option value="">Anyone</option>${pOpt('')}</select></label>
           <label>Assign to<select id="asTo">${pOpt('')}</select></label>
-          <label>Split with (optional second owner)<select id="asTo2"><option value="">— nobody, all to one person —</option>${pOpt('')}</select></label>
+          <label>Second owner (optional)<select id="asTo2"><option value="">— nobody, all to one person —</option>${pOpt('')}</select></label>
+          <label>With two owners<select id="asMode"><option value="share">Both get every lead (both can edit)</option><option value="split">Split the leads between them</option></select></label>
         </div>
         <p id="asCount" style="margin:10px 0 6px"></p>
         <button class="rg-btn primary" id="asGo" type="button">Assign</button></div>
@@ -682,7 +690,8 @@ const RegisterApp = (() => {
           <label>Location<input id="rlLoc" list="rgLocList" placeholder="e.g. Mumbai"></label>
           <label>Category (optional)<input id="rlCat" list="rgCatList" placeholder="any"></label>
           <label>Assign to<select id="rlTo">${pOpt('')}</select></label>
-          <label>Second owner (optional — leads are split evenly)<select id="rlTo2"><option value="">— none —</option>${pOpt('')}</select></label></div>
+          <label>Second owner (optional)<select id="rlTo2"><option value="">— none —</option>${pOpt('')}</select></label>
+          <label>With two owners<select id="rlMode"><option value="share">Both get every lead (both can edit)</option><option value="split">Split the leads between them</option></select></label></div>
         <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="rg-btn" id="rlAdd" type="button">＋ Save rule</button><button class="rg-btn primary" id="rlApply" type="button">Apply rules to existing leads</button></div></div>
       <div class="rg-card" style="margin:0 0 14px"><h4 style="margin:0 0 8px">Fill missing locations</h4>
         <p id="flInfo" style="margin:0 0 8px"></p><button class="rg-btn" id="flGo" type="button">Read locations from company addresses</button></div>
@@ -700,11 +709,12 @@ const RegisterApp = (() => {
     const matching = () => {
       const loc = m.querySelector('#asLoc').value, cat = m.querySelector('#asCat').value, from = m.querySelector('#asFrom').value, own = owners2();
       if (!loc) return [];
-      return live().filter(r => (loc === '__none' ? !r.location : r.location === loc) && (!cat || r.category === cat) && (!from || r.assigned_to === from) && !own.includes(r.assigned_to));
+      const share = own.length > 1 && m.querySelector('#asMode').value === 'share';
+      return live().filter(r => (loc === '__none' ? !r.location : r.location === loc) && (!cat || r.category === cat) && (!from || r.assigned_to === from) && (share ? !(r.assigned_to === own[0] && r.assigned_to2 === own[1]) : (!own.includes(r.assigned_to) || (own.length === 1 && r.assigned_to2))));
     };
-    const count = () => { const n = matching().length, loc = m.querySelector('#asLoc').value; m.querySelector('#asCount').innerHTML = loc ? `<b>${n}</b> lead${n === 1 ? '' : 's'} will ${owners2().length > 1 ? 'be split between ' + esc(owners2().map(i => S.people[i]).join(' and ')) : 'move to ' + esc(S.people[m.querySelector('#asTo').value] || '')}.` : '<span style="color:var(--rg-muted)">Choose a location to see how many leads match.</span>'; m.querySelector('#asGo').disabled = !n; };
+    const count = () => { const n = matching().length, loc = m.querySelector('#asLoc').value; m.querySelector('#asCount').innerHTML = loc ? `<b>${n}</b> lead${n === 1 ? '' : 's'} will ${owners2().length > 1 ? (m.querySelector('#asMode').value === 'share' ? 'be shared by ' : 'be split between ') + esc(owners2().map(i => S.people[i]).join(' and ')) : 'move to ' + esc(S.people[m.querySelector('#asTo').value] || '')}.` : '<span style="color:var(--rg-muted)">Choose a location to see how many leads match.</span>'; m.querySelector('#asGo').disabled = !n; };
     const showRules = () => {
-      m.querySelector('#asRules').innerHTML = rules.length ? `<table class="rg-table"><thead><tr><th>Location</th><th>Category</th><th>Goes to</th><th></th></tr></thead><tbody>${rules.map(r => `<tr><td>${esc(r.location)}</td><td>${esc(r.category || 'any')}</td><td>${esc(S.people[r.assignee] || '?')}${r.assignee2 ? ' + ' + esc(S.people[r.assignee2] || '?') + ' <small>(split evenly)</small>' : ''}</td><td><button class="rg-btn sm danger" data-rdel="${esc(r.id)}" type="button">Remove</button></td></tr>`).join('')}</tbody></table>` : '<p style="color:var(--rg-muted);margin:0">No rules yet.</p>';
+      m.querySelector('#asRules').innerHTML = rules.length ? `<table class="rg-table"><thead><tr><th>Location</th><th>Category</th><th>Goes to</th><th></th></tr></thead><tbody>${rules.map(r => `<tr><td>${esc(r.location)}</td><td>${esc(r.category || 'any')}</td><td>${esc(S.people[r.assignee] || '?')}${r.assignee2 ? ' + ' + esc(S.people[r.assignee2] || '?') + (r.share ? ' <small>(both have access)</small>' : ' <small>(split evenly)</small>') : ''}</td><td><button class="rg-btn sm danger" data-rdel="${esc(r.id)}" type="button">Remove</button></td></tr>`).join('')}</tbody></table>` : '<p style="color:var(--rg-muted);margin:0">No rules yet.</p>';
     };
     const fillInfo = () => {
       const none = live().filter(r => !r.location && r.company); const guess = none.filter(r => RegHelpers.guessLocation(r.company, locations()));
@@ -713,15 +723,16 @@ const RegisterApp = (() => {
     };
     const refresh = () => { fillSelects(); count(); showRules(); fillInfo(); };
     refresh();
-    ['#asLoc', '#asCat', '#asFrom', '#asTo', '#asTo2'].forEach(q => m.querySelector(q).onchange = count);
+    ['#asLoc', '#asCat', '#asFrom', '#asTo', '#asTo2', '#asMode'].forEach(q => m.querySelector(q).onchange = count);
     m.querySelector('#asGo').onclick = async (e) => {
       const rows = matching(); if (!rows.length) return; const own = owners2();
-      const half = own.length > 1 ? Math.ceil(rows.length / 2) : rows.length;
-      if (!(await customConfirm(own.length > 1 ? `Split ${rows.length} leads: ${half} to ${S.people[own[0]]} and ${rows.length - half} to ${S.people[own[1]]}?` : `Move ${rows.length} lead${rows.length === 1 ? '' : 's'} to ${S.people[own[0]]}?`, { confirmText: 'Assign' }))) return;
+      const shareMode = own.length > 1 && m.querySelector('#asMode').value === 'share';
+      const half = own.length > 1 && !shareMode ? Math.ceil(rows.length / 2) : rows.length;
+      if (!(await customConfirm(shareMode ? `Give ${rows.length} lead${rows.length === 1 ? '' : 's'} to ${S.people[own[0]]} and ${S.people[own[1]]}? Both will be able to edit them.` : own.length > 1 ? `Split ${rows.length} leads: ${half} to ${S.people[own[0]]} and ${rows.length - half} to ${S.people[own[1]]}?` : `Move ${rows.length} lead${rows.length === 1 ? '' : 's'} to ${S.people[own[0]]}?`, { confirmText: 'Assign' }))) return;
       e.target.disabled = true; e.target.textContent = 'Assigning…';
-      const parts = own.length > 1 ? [[own[0], rows.slice(0, half)], [own[1], rows.slice(half)]] : [[own[0], rows]];
+      const parts = shareMode ? [[own[0], rows, own[1]]] : own.length > 1 ? [[own[0], rows.slice(0, half), null], [own[1], rows.slice(half), null]] : [[own[0], rows, null]];
       const r = { done: 0, fail: 0 };
-      for (const [uid, list] of parts) { const x = await bulkUpdate(list.map(l => l.id), { assigned_to: uid }, (d, t) => { e.target.textContent = `Assigning… ${d}/${t}`; }); r.done += x.done; r.fail += x.fail; }
+      for (const [uid, list, uid2] of parts) { const x = await bulkUpdate(list.map(l => l.id), { assigned_to: uid, assigned_to2: uid2 }, (d, t) => { e.target.textContent = `Assigning… ${d}/${t}`; }); r.done += x.done; r.fail += x.fail; }
       await reload(); e.target.textContent = 'Assign'; refresh();
       showToast(r.fail ? 'warning' : 'success', 'Leads assigned', `${r.done} moved${r.fail ? `, ${r.fail} could not be moved` : ''}.`);
     };
@@ -730,7 +741,7 @@ const RegisterApp = (() => {
       if (!loc) { showToast('error', 'Location needed', 'Type the location this rule is for.'); return; }
       const hit = locations().find(l => lc(l) === lc(loc)) || loc.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()), chit = cat ? (categories().find(c => lc(c) === lc(cat)) || cat) : null;
       const to2 = m.querySelector('#rlTo2').value;
-      const { error } = await sb().from('register_assign_rules').insert({ location: hit, category: chit, assignee: to, assignee2: to2 && to2 !== to ? to2 : null, created_by: S.me });
+      const { error } = await sb().from('register_assign_rules').insert({ location: hit, category: chit, assignee: to, assignee2: to2 && to2 !== to ? to2 : null, share: m.querySelector('#rlMode').value === 'share', created_by: S.me });
       if (error) { await customAlert(nice(error.message), { title: 'Rule not saved', danger: true }); return; }
       rules = await loadRules(); m.querySelector('#rlLoc').value = ''; m.querySelector('#rlCat').value = ''; showRules(); showToast('success', 'Rule saved', `${hit}${chit ? ' · ' + chit : ''} → ${S.people[to]}${to2 && to2 !== to ? ' + ' + S.people[to2] : ''}`);
     };
@@ -745,15 +756,17 @@ const RegisterApp = (() => {
       if (!rules.length) { showToast('info', 'No rules', 'Add a rule first.'); return; }
       const by = {}, st = {}; live().forEach(r => {
         const hit = rules.filter(x => lc(x.location) === lc(r.location) && (!x.category || lc(x.category) === lc(r.category))).sort((a, b) => (b.category ? 1 : 0) - (a.category ? 1 : 0))[0];
-        if (!hit || ruleOwners(hit).includes(r.assigned_to)) return;       // already with one of the rule's owners: leave it
-        const to = ruleFor(r, rules, st); if (to) (by[to] = by[to] || []).push(r.id);
+        if (!hit) return;
+        const sharing = hit.share && hit.assignee2 && hit.assignee2 !== hit.assignee;
+        if (sharing ? (r.assigned_to === hit.assignee && r.assigned_to2 === hit.assignee2) : ruleOwners(hit).includes(r.assigned_to)) return;   // already right: leave it
+        const t = ruleTarget(r, rules, st); if (t && t.a) (by[t.a + '|' + (t.b || '')] = by[t.a + '|' + (t.b || '')] || []).push(r.id);
       });
       const total = Object.values(by).reduce((n, a) => n + a.length, 0);
       if (!total) { showToast('info', 'Nothing to move', 'Every lead that matches a rule is already with the right person.'); return; }
-      const lines = Object.keys(by).map(t => `• ${by[t].length} to ${S.people[t]}`).join('\n');
+      const lines = Object.keys(by).map(t => { const [a, b] = t.split('|'); return `• ${by[t].length} to ${S.people[a]}${b ? ' and ' + S.people[b] + ' (both have access)' : ''}`; }).join('\n');
       if (!(await customConfirm(`Apply the rules?\n\n${lines}`, { confirmText: 'Apply' }))) return;
       e.target.disabled = true; e.target.textContent = 'Applying…'; let done = 0, fail = 0;
-      for (const t of Object.keys(by)) { const r = await bulkUpdate(by[t], { assigned_to: t }); done += r.done; fail += r.fail; }
+      for (const t of Object.keys(by)) { const [a, b] = t.split('|'); const r = await bulkUpdate(by[t], { assigned_to: a, assigned_to2: b || null }); done += r.done; fail += r.fail; }
       await reload(); e.target.disabled = false; e.target.textContent = 'Apply rules to existing leads'; refresh();
       showToast(fail ? 'warning' : 'success', 'Rules applied', `${done} lead${done === 1 ? '' : 's'} moved${fail ? `, ${fail} could not be moved` : ''}.`);
     };
@@ -840,9 +853,10 @@ const RegisterApp = (() => {
     const opts = S.peopleList.filter(p => p.role === 'marketing' || p.role === 'admin');
     const row = rowById(id);
     const m = modal(`<h3>Reassign lead</h3><p class="sub">${esc(row.client_name)} — choose who owns and can edit it.</p>
-      <div class="rg-form"><label class="wide">New owner<select id="rgReown">${opts.map(p => `<option value="${p.id}" ${p.id === row.assigned_to ? 'selected' : ''}>${esc(p.name)} (${p.role})</option>`).join('')}</select></label></div>
+      <div class="rg-form"><label class="wide">Owner<select id="rgReown">${opts.map(p => `<option value="${p.id}" ${p.id === row.assigned_to ? 'selected' : ''}>${esc(p.name)} (${p.role})</option>`).join('')}</select></label>
+        <label class="wide">Second owner (optional — has the same access)<select id="rgReown2"><option value="">— none —</option>${opts.map(p => `<option value="${p.id}" ${p.id === row.assigned_to2 ? 'selected' : ''}>${esc(p.name)} (${p.role})</option>`).join('')}</select></label></div>
       <div class="rg-modal-actions"><button class="rg-btn" data-close>Cancel</button><button class="rg-btn primary" id="rgReownGo">Reassign</button></div>`);
-    m.querySelector('#rgReownGo').onclick = async () => { const v = m.querySelector('#rgReown').value; m.remove(); await adminPatch(id, { assigned_to: v }, 'Lead reassigned.'); };
+    m.querySelector('#rgReownGo').onclick = async () => { const v = m.querySelector('#rgReown').value, v2 = m.querySelector('#rgReown2').value; m.remove(); await adminPatch(id, { assigned_to: v, assigned_to2: v2 && v2 !== v ? v2 : null }, 'Lead owners saved.'); };
   }
   async function openHistory(id) {
     const { data, error } = await sb().from('register_audit').select('*').eq('row_id', id).order('at', { ascending: false }).limit(200);
@@ -1158,11 +1172,13 @@ const RegisterApp = (() => {
       const owner = m.querySelector('#imOwner').value; e.target.disabled = true; e.target.textContent = 'Importing…'; m.querySelector('#imPreview').innerHTML = '<div style="padding:18px;text-align:center;font-weight:600">⏳ Importation is under process… please wait and do not close this window.</div>'; m.querySelectorAll('[data-close]').forEach(b => b.disabled = true);
       const rules = owner === '__rules' ? await loadRules() : [];
       const rstate = {};
-      const ownerFor = (i) => owner === '__rules' ? (ruleFor(parsed[i], rules, rstate) || S.me) : owner;
+      const tgt = parsed.map(o => owner === '__rules' ? ruleTarget(o, rules, rstate) : null);
+      const ownerFor = (i) => owner === '__rules' ? ((tgt[i] && tgt[i].a) || S.me) : owner;
+      const owner2For = (i) => (owner === '__rules' && tgt[i] && tgt[i].b) || null;
       let ok = 0; const fails = [];
       const prog = m.querySelector('#imPreview > div');
       const idxs = []; parsed.forEach((o, i) => { if (probs[i]) fails.push(`Row ${o.__line} (${o.client_name || 'no name'}) — ${probs[i]}`); else idxs.push(i); });
-      const mk = (i) => { const o = Object.assign({}, parsed[i]); delete o.__line; return Object.assign({}, o, { assigned_to: ownerFor(i), created_by: S.me }); };
+      const mk = (i) => { const o = Object.assign({}, parsed[i]); delete o.__line; return Object.assign({}, o, { assigned_to: ownerFor(i), assigned_to2: owner2For(i), created_by: S.me }); };
       for (let c = 0; c < idxs.length; c += 200) {
         const chunk = idxs.slice(c, c + 200);
         const { error } = await sb().from('follow_up_register').insert(chunk.map(mk));
