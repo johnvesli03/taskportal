@@ -1,15 +1,102 @@
 /* Hide a protected page until the sign-in/role check finishes, so a
-   marketing user never sees even a flash of the task portal. */
+   marketing user never sees even a flash of the task portal.
+   While it waits, a branded loading animation is shown instead of a blank page. */
 (function () {
+  const CSS = `
+.euo-splash{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:radial-gradient(900px 500px at 50% 38%,#fff3ec 0%,#ffffff 60%);color:#0f172a;visibility:visible;font-family:Inter,system-ui,sans-serif;transition:opacity .45s ease,transform .45s ease}
+.euo-splash.dark{background:radial-gradient(900px 500px at 50% 38%,#2a1710 0%,#0c111b 62%);color:#e7ebf3}
+.euo-splash.out{opacity:0;transform:scale(1.04);pointer-events:none}
+.euo-blob{position:relative;width:92px;height:92px;flex:none}
+.euo-blob .g,.euo-blob .glow{position:absolute;inset:0;background:conic-gradient(from 0deg,#F06422,#ff4d8d,#7c5cff,#22d3ee,#F06422);animation:euoMorph 5.5s ease-in-out infinite,euoTurn 4s linear infinite}
+.euo-blob .glow{filter:blur(18px);opacity:.55}
+.euo-blob .in{position:absolute;inset:7px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;animation:euoPop 2.2s ease-in-out infinite}
+.euo-dark .euo-blob .in,.euo-splash.dark .euo-blob .in{background:#0c111b}
+.euo-blob .in img{width:56%;height:56%;object-fit:contain}
+.euo-blob .in b{width:30%;height:30%;border-radius:50%;background:#F06422}
+.euo-word{font:800 15px Sora,Inter,system-ui,sans-serif;letter-spacing:.42em;text-indent:.42em;text-transform:uppercase;background:linear-gradient(100deg,currentColor 35%,#F06422 50%,currentColor 65%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:euoShine 2.2s linear infinite}
+.euo-msg{font-size:12.5px;opacity:.6;min-height:18px;text-align:center;padding:0 24px;margin-top:-14px}
+.euo-sub{font-size:12.5px;min-height:16px;text-align:center;padding:0 24px;max-width:340px;margin-top:-18px;opacity:0;transition:opacity .4s}
+.euo-slow .euo-sub{opacity:1;color:#b45309}
+.euo-splash.dark.euo-slow .euo-sub{color:#f0b429}
+.euo-mini{display:inline-flex;align-items:center;gap:10px;vertical-align:middle}
+.euo-mini .euo-blob{width:20px;height:20px}.euo-mini .glow{display:none}.euo-mini .in{inset:3px}.euo-mini .in img{display:none}.euo-mini .in b{width:34%;height:34%}
+.euo-skel{display:flex;flex-direction:column;gap:10px;padding:6px 2px;width:100%;max-width:560px}
+.euo-skel i{display:block;height:13px;border-radius:8px;background:linear-gradient(90deg,rgba(148,163,184,.18) 25%,rgba(240,100,34,.22) 50%,rgba(148,163,184,.18) 75%);background-size:300% 100%;animation:euoShimmer 1.4s ease-in-out infinite}
+.euo-skel i:nth-child(1){width:42%;height:16px}.euo-skel i:nth-child(2){width:96%}.euo-skel i:nth-child(3){width:78%}.euo-skel i:nth-child(4){width:60%}
+.euo-bar{position:fixed;left:0;top:0;height:3px;width:100%;z-index:2147483100;overflow:hidden;opacity:0;transition:opacity .25s;pointer-events:none}
+.euo-bar.on{opacity:1}
+.euo-bar::before{content:"";position:absolute;top:0;bottom:0;width:38%;border-radius:3px;background:linear-gradient(90deg,transparent,#F06422,#ff4d8d,#7c5cff,transparent);animation:euoSweep 1.1s ease-in-out infinite}
+.euo-pill{position:fixed;left:50%;bottom:22px;transform:translate(-50%,24px);opacity:0;z-index:2147483100;display:flex;align-items:center;gap:10px;background:rgba(22,32,51,.92);backdrop-filter:blur(10px);color:#f3f5fa;padding:9px 16px 9px 12px;border-radius:999px;font:600 13px Inter,system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3);transition:all .3s ease;pointer-events:none;max-width:calc(100vw - 24px)}
+.euo-pill.on{opacity:1;transform:translate(-50%,0)}
+.euo-pill.off{background:rgba(127,29,29,.95)}
+@keyframes euoMorph{0%,100%{border-radius:60% 40% 30% 70%/60% 30% 70% 40%}25%{border-radius:30% 60% 70% 40%/50% 60% 30% 60%}50%{border-radius:50% 50% 33% 67%/55% 27% 73% 45%}75%{border-radius:70% 30% 50% 50%/30% 30% 70% 70%}}
+@keyframes euoTurn{to{transform:rotate(360deg)}}
+@keyframes euoPop{0%,100%{transform:scale(1)}50%{transform:scale(.93)}}
+@keyframes euoShine{to{background-position:-250% 0}}
+@keyframes euoShimmer{0%{background-position:100% 0}100%{background-position:-200% 0}}
+@keyframes euoSweep{0%{left:-40%}100%{left:102%}}
+@media (prefers-reduced-motion:reduce){.euo-blob .g,.euo-blob .glow,.euo-word,.euo-skel i,.euo-bar::before{animation-duration:8s}}`;
+  const blob = () => '<div class="euo-blob"><span class="glow"></span><span class="g"></span><span class="in"><img src="assets/logo-mark.png" alt="" onerror="this.outerHTML=\'<b></b>\'"></span></div>';
+  window.EuoLoader = { orbit: blob, mini: (text) => '<span class="euo-mini">' + blob() + '<span>' + (text || 'Loading…') + '</span></span>', skeleton: (text) => '<div class="euo-skel" role="status" aria-label="' + (text || 'Loading') + '"><i></i><i></i><i></i><i></i></div>' };
+  const dark = () => { try { return localStorage.getItem('euodoo-dark-mode') === '1'; } catch (e) { return false; } };
+  const st = document.createElement('style'); st.textContent = CSS; (document.head || document.documentElement).appendChild(st);
+
+  let splash = null, startT = Date.now(), minUntil = 0;
+  const SLOW = 'Slow connection — still working on it…', VERY = 'Your internet is very slow or lost. This page keeps trying — please wait or check your connection.';
+  function showSplash() {
+    if (splash) return;
+    minUntil = Date.now() + 700; splash = document.createElement('div'); splash.className = 'euo-splash' + (dark() ? ' dark' : '');
+    splash.innerHTML = blob() + '<div class="euo-word">Euodoo</div><div class="euo-msg">Getting things ready…</div><div class="euo-sub"></div>';
+    document.documentElement.appendChild(splash);
+    const tick = setInterval(() => {
+      if (!splash) return clearInterval(tick);
+      const s = (Date.now() - startT) / 1000, sub = splash.querySelector('.euo-sub');
+      if (s > 5) splash.classList.add('euo-slow');
+      sub.textContent = s > 15 ? VERY : s > 5 ? SLOW : '&nbsp;'.replace('&nbsp;','');
+    }, 700);
+  }
+  window.hideEuoSplash = function () { if (!splash) return; const wait = Math.max(0, minUntil - Date.now()); setTimeout(() => { const x = splash; if (!x) return; splash = null; x.classList.add('out'); setTimeout(() => x.remove(), 500); }, wait); };
+
   try {
     const open = /(^\/?$|index|404|client-view|reset)/i.test(window.location.pathname);
     if (!open) {
       document.documentElement.style.visibility = 'hidden';
-      setTimeout(function () { document.documentElement.style.visibility = ''; }, 6000); // failsafe
+      showSplash();
+      setTimeout(function () { document.documentElement.style.visibility = ''; window.hideEuoSplash(); }, 25000); // failsafe
     }
   } catch (e) {}
+
+  // thin sweeping bar + "slow connection" / "offline" pill while requests are in flight
+  const ready = () => {
+    const bar = document.createElement('div'); bar.className = 'euo-bar';
+    const pill = document.createElement('div'); pill.className = 'euo-pill';
+    document.body.appendChild(bar); document.body.appendChild(pill);
+    let n = 0, barT = null, slowT = null;
+    const pillOn = (html, off) => { pill.innerHTML = html; pill.classList.toggle('off', !!off); pill.classList.add('on'); };
+    const pillOff = () => pill.classList.remove('on');
+    const update = () => {
+      if (!navigator.onLine) { pillOn(window.EuoLoader.mini('You are offline — reconnecting…'), true); return; }
+      if (n > 0) {
+        if (!barT) barT = setTimeout(() => bar.classList.add('on'), 300);
+        if (!slowT) slowT = setTimeout(() => pillOn(window.EuoLoader.mini('Slow connection — still loading…')), 6000);
+      } else {
+        clearTimeout(barT); clearTimeout(slowT); barT = slowT = null; bar.classList.remove('on'); pillOff();
+      }
+    };
+    window.addEventListener('euo-net', (e) => { n = e.detail; update(); });
+    window.addEventListener('offline', update); window.addEventListener('online', update);
+    if (!navigator.onLine) update();
+    // every "Loading…" note in the portal gets the animated loader
+    const swap = () => document.querySelectorAll('.portal-note:not(.euo-done)').forEach(el => {
+      const t = (el.textContent || '').trim();
+      if (el.children.length === 0 && /^Loading/i.test(t)) { el.classList.add('euo-done'); el.innerHTML = window.EuoLoader.skeleton(t); }
+    });
+    swap(); let q = null;
+    new MutationObserver(() => { if (!q) q = setTimeout(() => { q = null; swap(); }, 60); }).observe(document.body, { childList: true, subtree: true });
+  };
+  if (document.body) ready(); else document.addEventListener('DOMContentLoaded', ready);
 })();
-function openAuthGate() { try { document.documentElement.style.visibility = ''; } catch (e) {} }
+function openAuthGate() { try { document.documentElement.style.visibility = ''; if (window.hideEuoSplash) window.hideEuoSplash(); } catch (e) {} }
 
 // ============================================================
 // Auth helpers shared across every page
