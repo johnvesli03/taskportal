@@ -480,11 +480,26 @@
   /* ---------- Multi-assignee ---------- */
   async function loadAssignees() {
     const { data: rows } = await supabaseClient.from('task_assignees').select('user_id, profiles(id, name)').eq('task_id', taskId);
-    const assignees = (rows || []).map(r => r.profiles).filter(Boolean);
+    let assignees = (rows || []).map(r => r.profiles).filter(Boolean);
+    // Older tasks only have the main assignee on the task itself. Show that person here too,
+    // so the header and the Assignees line always agree.
+    if (!assignees.length && currentTask && currentTask.assigned_to) {
+      const { data: p } = await supabaseClient.from('profiles').select('id, name').eq('id', currentTask.assigned_to).maybeSingle();
+      if (p) assignees = [p];
+    }
     document.getElementById('assigneeChips').innerHTML = assignees.length
       ? assignees.map(a => `<span class="tag-chip" style="background:var(--primary);">${escapeHtml(a.name)}</span>`).join('')
       : `<span class="portal-note" style="font-size:.8rem;">Unassigned</span>`;
     window.__currentAssigneeIds = assignees.map(a => a.id);
+    renderTaskMeta(assignees.map(a => a.name));
+  }
+  function renderTaskMeta(names) {
+    const task = currentTask; if (!task) return;
+    document.getElementById('taskMeta').innerHTML =
+      escapeHtml(task.project ? `In project: ${task.project.name}` : 'Standalone task') +
+      escapeHtml(names && names.length ? ` · Assigned to ${names.join(', ')}` : ' · Unassigned') +
+      (task.estimated_hours ? escapeHtml(` · Est. ${task.estimated_hours}h`) : '') +
+      (task.due_date ? ' · ' + dueDateLabel(task.due_date, task.status) : '');
   }
 
   /* ---------- Edit task details (admin) ---------- */
