@@ -115,6 +115,7 @@
   </form>
 
   <hr class="auth-divider">
+
   <p class="auth-note">New here? Please contact your administrator to have an account created for you, along with your Employee ID and sign-in credentials.</p>
 </div>
 
@@ -140,6 +141,7 @@
   // Generic error for both bad ID and bad password — never reveal
   // which one was wrong (same reasoning as a normal email+password form).
   const BAD_LOGIN = 'That Employee ID or password is incorrect.';
+  const SUSPENDED = 'Your access has been suspended. Please contact your admin.';
 
   forgotForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -180,7 +182,11 @@
       if (resolveErr || matches !== true) throw new Error(BAD_LOGIN);
 
       const { data: signed, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(BAD_LOGIN);
+      if (error) {
+        // Supabase itself reports a suspended (banned) account when the password is right
+        let sus = error.code === 'user_banned' || /banned|suspended/i.test(error.message || ''); if (!sus) try { const r = await supabaseClient.rpc('login_is_suspended', { p_email: email, p_employee_id: employeeId }); sus = r.data === true; } catch (e) {}
+        throw new Error(sus ? SUSPENDED : BAD_LOGIN);
+      }
 
       queueToast('success', 'Signed in', `Welcome back!`, { sound: true });
       try { await supabaseClient.rpc('record_login', { p_user_agent: navigator.userAgent }); } catch (e) {}
@@ -198,6 +204,7 @@
 
   (async () => {
     flushPendingToast();
+    try { if (sessionStorage.getItem('euo-suspended')) { sessionStorage.removeItem('euo-suspended'); const eb = document.getElementById('authError'); if (eb) { eb.style.display = 'block'; eb.textContent = SUSPENDED; } } } catch (e) {}
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
       const { data: prof } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();

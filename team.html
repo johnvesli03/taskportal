@@ -192,6 +192,17 @@
     loadTeam();
   }
 
+  async function toggleSuspension(id, isSuspended, name) {
+    const msg = isSuspended
+      ? `Restore access for ${name}?\n\nThey will be able to sign in again with their Employee ID and password.`
+      : `Suspend access for ${name}?\n\nThey will be signed out right away and cannot sign in or see any data until you restore access. Their tasks, projects and history are kept.`;
+    if (!(await customConfirm(msg, { title: isSuspended ? 'Restore access' : 'Suspend access', confirmText: isSuspended ? 'Restore' : 'Suspend', danger: !isSuspended }))) return;
+    const { error } = await supabaseClient.rpc('admin_set_suspension', { p_user: id, p_suspend: !isSuspended });
+    if (error) { await customAlert('Could not change access: ' + error.message + (/function|schema cache/i.test(error.message) ? '\n\nHas migration-v31.sql been run?' : ''), { title: 'Something went wrong', danger: true }); return; }
+    showToast('success', isSuspended ? 'Access restored' : 'Access suspended', isSuspended ? `${name} can sign in again.` : `${name} has been signed out.`);
+    loadTeam();
+  }
+
   async function editEmployeeId(id, currentId) {
     const next = await customPrompt('Employee ID for sign-in:', currentId || '', { title: 'Edit Employee ID', placeholder: 'e.g. ET003', okText: 'Save' });
     if (next === null) return;
@@ -207,7 +218,8 @@
   }
 
   async function loadTeam() {
-    const { data: people, error } = await supabaseClient.from('profiles').select('id, name, email, role, avatar_color, created_at').order('created_at');
+    let { data: people, error } = await supabaseClient.from('profiles').select('id, name, email, role, avatar_color, created_at, suspended').order('created_at');
+    if (error) ({ data: people, error } = await supabaseClient.from('profiles').select('id, name, email, role, avatar_color, created_at').order('created_at'));
     const list = document.getElementById('teamList');
     if (error) { list.innerHTML = `<p class="portal-note">Could not load team.</p>`; return; }
     // Employee IDs are hidden from normal reads — admins fetch them through a checked function.
@@ -217,11 +229,11 @@
     (people || []).forEach(p => { p.employee_id = idMap[p.id] || null; });
 
     list.innerHTML = `<table class="portal-table"><tbody>` + (people || []).map(p => `
-      <tr>
+      <tr style="${p.suspended ? 'opacity:.6;' : ''}">
         <td style="width:1%;"><div class="portal-who-avatar" style="background:var(--primary);">${initials(p.name)}</div></td>
         <td>
           <div class="portal-cell-stack">
-            <b style="font-size:.88rem;">${escapeHtml(p.name)} ${p.id === currentProfile.id ? '<span class="portal-note" style="font-weight:400;">(you)</span>' : ''}</b>
+            <b style="font-size:.88rem;">${escapeHtml(p.name)} ${p.id === currentProfile.id ? '<span class="portal-note" style="font-weight:400;">(you)</span>' : ''} ${p.suspended ? '<span class="status-pill status-red" style="margin-left:6px;">Suspended</span>' : ''}</b>
             <small>${escapeHtml(p.email)}</small>
           </div>
         </td>
@@ -237,7 +249,8 @@
             <option value="member" ${p.role === 'member' ? 'selected' : ''}>Employee</option>
             <option value="marketing" ${p.role === 'marketing' ? 'selected' : ''}>Marketing</option>
             <option value="admin" ${p.role === 'admin' ? 'selected' : ''}>Admin</option>
-          </select>` : ''}
+          </select>
+          <button class="btn ${p.suspended ? 'btn-primary' : ''}" style="margin-left:8px; padding:6px 12px; font-size:12px; ${p.suspended ? '' : 'color:var(--danger,#b91c1c);'}" onclick="toggleSuspension('${p.id}', ${p.suspended ? 'true' : 'false'}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')">${p.suspended ? 'Restore access' : 'Suspend access'}</button>` : ''}
         </td>
       </tr>
     `).join('') + `</tbody></table>`;
