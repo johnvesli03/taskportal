@@ -12,8 +12,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root {
-          --primary: #F06422;
-          --primary-dark: #C8500F;
+          --primary: #009090;
+          --primary-dark: #007575;
           --primary-tint: #fef1e9;
           --teal: #0FB9AE;
           --ink: #10142b;
@@ -30,7 +30,7 @@
           font-family: 'Inter', 'Segoe UI', sans-serif;
           color: var(--ink);
           background:
-            radial-gradient(900px 500px at 15% -10%, rgba(240,100,34,0.08), transparent 60%),
+            radial-gradient(900px 500px at 15% -10%, rgba(0, 144, 144,0.08), transparent 60%),
             radial-gradient(700px 420px at 100% 0%, rgba(15,185,174,0.07), transparent 55%),
             var(--bg);
           min-height: 100vh;
@@ -89,7 +89,7 @@
         .btn:hover { background: var(--bg); color: var(--ink); transform: translateY(-1px); }
         .btn-primary {
           background: var(--primary); color: #fff; border-color: var(--primary);
-          box-shadow: 0 8px 20px -6px rgba(240,100,34,.5);
+          box-shadow: 0 8px 20px -6px rgba(0, 144, 144,.5);
         }
         .btn-primary:hover { background: var(--primary-dark); color: #fff; }
 
@@ -117,7 +117,7 @@
         .stage-dot.done { background: #16a34a; color: #fff; box-shadow: 0 0 0 1px #16a34a; }
         .stage-dot.active { background: var(--primary); color: #fff; box-shadow: 0 0 0 1px var(--primary); animation: dotPulse 2s ease-in-out infinite; }
         .stage-dot.pending { background: var(--bg); color: var(--ink-muted); }
-        @keyframes dotPulse { 0%, 100% { box-shadow: 0 0 0 1px var(--primary); } 50% { box-shadow: 0 0 0 5px rgba(240,100,34,.18); } }
+        @keyframes dotPulse { 0%, 100% { box-shadow: 0 0 0 1px var(--primary); } 50% { box-shadow: 0 0 0 5px rgba(0, 144, 144,.18); } }
         .stage-info { flex: 1; padding-top: 3px; }
         .stage-name { font-size: .89rem; font-weight: 600; color: var(--ink); }
         .stage-due { font-size: 11.5px; color: var(--ink-muted); margin-top: 2px; }

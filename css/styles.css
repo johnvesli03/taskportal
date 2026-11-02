@@ -1,15 +1,14 @@
 /* ================================================================
    EUODOO — BASE DESIGN TOKENS
    Brand colors sampled directly from the Euodoo Technologies logo:
-   teal #0FB9AE / #0B686D, orange #F06422, navy #222074.
+   teal #0FB9AE / #0B686D, orange #F06422 (logo), navy #222074.
    ================================================================ */
 :root {
-  /* brand — sampled from the Euodoo Technologies logo. Orange is the
-     lead brand color (buttons, links, active states, focus rings) —
-     matching the Employee Portal's orange CTA. Teal is the secondary
+  /* brand — sampled from the Euodoo Technologies logo. Teal (#009090) is the
+     lead color (buttons, links, active states, focus rings), the same as the Employee Portal. Teal is the secondary
      accent (badges, highlights). */
-  --primary: #F06422;       /* logo's orange — main action color */
-  --primary-dark: #C8500F;  /* darker orange for hover states */
+  --primary: #009090;       /* Employee Portal teal — main action color */
+  --primary-dark: #007575;  /* darker teal for hover states */
   --accent-teal: #0FB9AE;   /* logo's bright teal — secondary accent */
   --accent-teal-dark: #0B686D;
   --gold: #eab308;          /* kept as a separate semantic color for "pending approval" status only */
@@ -74,7 +73,7 @@ label { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); display: bl
 }
 .input-box:focus, textarea:focus, select:focus {
   outline: none; border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(240, 100, 34, 0.10);
+  box-shadow: 0 0 0 3px rgba(0, 144, 144, 0.10);
 }
 textarea { resize: vertical; min-height: 70px; }
 .portal-field { margin-bottom: 16px; }
@@ -180,7 +179,7 @@ textarea { resize: vertical; min-height: 70px; }
   font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
   padding: 2px 8px; border-radius: 999px;
 }
-.role-badge--admin { background: rgba(240,100,34,0.14); color: var(--primary); }
+.role-badge--admin { background: rgba(0, 144, 144,0.14); color: var(--primary); }
 .role-badge--member { background: rgba(15,185,174,0.12); color: var(--accent-teal); }
 
 /* ---------- Top bar (search + dark mode toggle) ---------- */

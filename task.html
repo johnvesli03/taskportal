@@ -84,6 +84,7 @@
       <div id="dependencyArea" data-admin-only="1" style="display:none; margin-top:12px;"></div>
 
       <div id="approvalArea" style="margin-top:16px; display:none;"></div>
+      <div id="extensionArea" style="margin-top:14px; display:none;"></div>
     </div>
 
     <div style="display:grid; grid-template-columns: 1.3fr 1fr; gap:20px; align-items:flex-start;">
@@ -121,6 +122,7 @@
         <div class="portal-section">
           <div class="portal-section-head"><h2>Time Tracking</h2></div>
           <div class="portal-project-card">
+            <div id="timerBox" style="margin-bottom:12px;"></div>
             <div id="timeSummary" class="portal-note" style="margin-bottom:10px;"></div>
             <div id="timeEntryList" style="margin-bottom:10px;"></div>
             <form id="timeForm" style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -137,7 +139,7 @@
           <div class="portal-project-card">
             <form id="updateForm">
               <div class="portal-field">
-                <label>What's changed? <span class="portal-note">(type @Name to mention someone)</span></label>
+                <label>What's changed? <span class="portal-note">(type @ to mention someone · paste a link to share a file)</span></label>
                 <textarea id="uText" required placeholder="e.g. Finished the API integration, testing now. @Priya can you review?"></textarea>
               </div>
               <div class="portal-field">
@@ -169,6 +171,19 @@
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="premium-modal" id="extModal">
+  <div class="premium-modal__backdrop" onclick="closeExtModal()"></div>
+  <div class="premium-modal__dialog">
+    <button class="premium-modal__close" onclick="closeExtModal()" aria-label="Close">×</button>
+    <div class="section-tag">More time</div>
+    <h3>Ask for a new due date</h3>
+    <p class="portal-note" id="extCurrent" style="margin:8px 0 14px;"></p>
+    <div class="portal-field"><label>New due date</label><input type="date" class="input-box" id="extDate"></div>
+    <div class="portal-field"><label>Why do you need more time?</label><textarea class="input-box" id="extReason" rows="3" maxlength="500" placeholder="e.g. Waiting for the client's logo files"></textarea></div>
+    <button class="btn btn-primary" style="width:100%; justify-content:center;" id="extSend" onclick="sendExtension()">Send request to admin</button>
   </div>
 </div>
 
@@ -275,6 +290,120 @@
     loadTimeEntries();
   });
 
+  /* ---------- Links in comments ---------- */
+  function linkify(html) {
+    return html.split(/(<[^>]+>)/).map(part => part.startsWith('<') ? part
+      : part.replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)"'])/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--primary); text-decoration:underline; word-break:break-all;">$1</a>')).join('');
+  }
+
+  /* ---------- Start / stop timer ---------- */
+  let __timer = null, __timerTick = null;
+  const canTimeThis = () => currentTask && (isAdmin(currentProfile) || (window.__currentAssigneeIds || []).includes(currentProfile.id) || currentTask.assigned_to === currentProfile.id);
+  const fmtClock = (ms) => { const t = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return [h, m, s].map(n => String(n).padStart(2, '0')).join(':'); };
+  async function loadTimer() {
+    const { data } = await supabaseClient.from('task_timers').select('task_id, started_at, tasks(title)').eq('user_id', currentProfile.id).maybeSingle();
+    __timer = data || null; renderTimer();
+  }
+  function renderTimer() {
+    const box = document.getElementById('timerBox'); if (!box) return;
+    clearInterval(__timerTick);
+    const btn = 'padding:8px 16px; font-size:13px; justify-content:center;';
+    if (__timer && __timer.task_id === taskId) {
+      box.innerHTML = `<div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--surface-alt,#fff7ed); border:1px solid #fdba74; border-radius:12px; padding:10px 14px;">
+        <span style="width:9px; height:9px; border-radius:50%; background:#ef4444; animation:euoPop 1.2s ease-in-out infinite;"></span>
+        <b id="timerClock" style="font:700 1.25rem var(--font-mono,'JetBrains Mono',monospace);">00:00:00</b>
+        <span class="portal-note" style="flex:1; min-width:120px;">Timer running — time is logged when you stop</span>
+        <button class="btn btn-danger" style="${btn}" onclick="stopTimer()">Stop &amp; log</button></div>`;
+      const tick = () => { const el = document.getElementById('timerClock'); if (el) el.textContent = fmtClock(Date.now() - new Date(__timer.started_at).getTime()); };
+      tick(); __timerTick = setInterval(tick, 1000);
+    } else if (__timer) {
+      box.innerHTML = `<div class="portal-note" style="background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:10px 14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <span style="flex:1; min-width:140px;">Your timer is running on <b>${escapeHtml(__timer.tasks ? __timer.tasks.title : 'another task')}</b>.</span>
+        ${canTimeThis() ? `<button class="btn btn-secondary" style="${btn}" onclick="startTimer()">Switch to this task</button>` : ''}
+        <button class="btn btn-secondary" style="${btn}" onclick="stopTimer()">Stop it</button></div>`;
+    } else if (canTimeThis() && currentTask.status !== 'done') {
+      box.innerHTML = `<button class="btn btn-primary" style="${btn} width:100%;" onclick="startTimer()">${icon('clock', 14)} Start timer</button>`;
+    } else box.innerHTML = '';
+  }
+  async function startTimer() {
+    const switching = __timer && __timer.task_id !== taskId;
+    const { error } = await supabaseClient.rpc('start_timer', { p_task: taskId });
+    if (error) { showToast('error', 'Timer not started', error.message + (/function|schema cache/i.test(error.message) ? ' (has migration-v32.sql been run?)' : '')); return; }
+    showToast('success', switching ? 'Timer switched' : 'Timer started', switching ? 'The earlier timer was stopped and its time logged.' : 'Keep this page open — the timer stops if you leave it.');
+    if (switching) loadTimeEntries();
+    await loadTimer(); EuoTimer.refresh();
+  }
+  async function stopTimer() {
+    const r = await EuoTimer.stop();     // shared stop: logs the time and updates every page
+    if (r === null) { showToast('error', 'Could not stop the timer', 'Please try again.'); return; }
+    await loadTimer(); loadTimeEntries();
+  }
+  window.addEventListener('euo-timer', () => { if (typeof loadTimer === 'function' && currentTask) { loadTimer(); loadTimeEntries(); } });
+
+  /* ---------- Ask for more time ---------- */
+  let __extPending = null;
+  async function loadExtension() {
+    const area = document.getElementById('extensionArea'); if (!area || !currentTask) return;
+    const { data: rows, error } = await supabaseClient.from('due_extension_requests')
+      .select('id, old_due, new_due, reason, requested_by, created_at, who:profiles!due_extension_requests_requested_by_fkey(name)')
+      .eq('task_id', taskId).eq('status', 'pending').limit(1);
+    if (error) { area.style.display = 'none'; return; }   // migration not run yet
+    __extPending = (rows || [])[0] || null;
+    const admin = isAdmin(currentProfile), t = currentTask;
+    const fmt = (d) => dmyDate(d);
+    if (__extPending) {
+      const r = __extPending;
+      area.style.display = 'block';
+      area.innerHTML = admin
+        ? `<div style="background:#fefce8; border:1px solid #fde68a; color:#854d0e; border-radius:10px; padding:12px 14px; font-size:.84rem;">
+            <b>${escapeHtml(r.who ? r.who.name : 'Someone')}</b> asked to move the due date from <b>${fmt(r.old_due)}</b> to <b>${fmt(r.new_due)}</b>.
+            <div style="margin:6px 0 10px;">“${escapeHtml(r.reason)}”</div>
+            <div style="display:flex; gap:8px;"><button class="btn btn-secondary" style="padding:7px 14px; font-size:12.5px;" onclick="decideExtension(false)">Decline</button>
+            <button class="btn btn-primary" style="padding:7px 14px; font-size:12.5px;" onclick="decideExtension(true)">Approve new date</button></div></div>`
+        : `<div style="background:#fefce8; border:1px solid #fde68a; color:#854d0e; border-radius:10px; padding:10px 14px; font-size:.84rem;">${icon('flag', 14)} More time requested (new date ${fmt(r.new_due)}) — waiting for an admin.</div>`;
+      return;
+    }
+    const mine = (window.__currentAssigneeIds || []).includes(currentProfile.id) || t.assigned_to === currentProfile.id;
+    if (!admin && mine && t.due_date && t.status !== 'done') {
+      const overdue = t.due_date < todayISO();
+      area.style.display = 'block';
+      area.innerHTML = `<button class="btn ${overdue ? 'btn-primary' : 'btn-secondary'}" style="padding:8px 14px; font-size:12.5px;" onclick="openExtModal()">${icon('clock', 13)} Ask for more time</button>
+        ${overdue ? `<span class="portal-note" style="margin-left:10px;">This task is overdue.</span>` : ''}`;
+    } else area.style.display = 'none';
+  }
+  const dmyDate = (d) => { const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}-${m}-${y}`; };
+  function openExtModal() {
+    const t = currentTask, min = new Date(new Date(t.due_date + 'T00:00:00').getTime() + 86400000);
+    let minIso = min.getFullYear() + '-' + String(min.getMonth() + 1).padStart(2, '0') + '-' + String(min.getDate()).padStart(2, '0');
+    if (minIso < todayISO()) minIso = todayISO();   // a new date in the past would not help anyone
+    const dt = document.getElementById('extDate'); dt.min = minIso; dt.max = '2100-12-31';
+    dt.value = minIso;
+    document.getElementById('extCurrent').textContent = `Current due date: ${dmyDate(t.due_date)}`;
+    document.getElementById('extReason').value = '';
+    document.getElementById('extModal').classList.add('is-open');
+  }
+  function closeExtModal() { document.getElementById('extModal').classList.remove('is-open'); }
+  async function sendExtension() {
+    const d = document.getElementById('extDate').value, reason = document.getElementById('extReason').value.trim();
+    if (!d || parseInt(d.slice(0, 4), 10) < 2000) { showToast('warning', 'Pick a date', 'Choose the new due date.'); return; }
+    if (reason.length < 5) { showToast('warning', 'Add a reason', 'A short reason helps the admin decide.'); return; }
+    const b = document.getElementById('extSend'); b.disabled = true;
+    const { error } = await supabaseClient.rpc('request_extension', { p_task: taskId, p_new_due: d, p_reason: reason });
+    b.disabled = false;
+    if (error) { showToast('error', 'Not sent', error.message + (/function|schema cache/i.test(error.message) ? ' (has migration-v32.sql been run?)' : '')); return; }
+    closeExtModal(); showToast('success', 'Request sent', 'An admin will approve or decline it.'); loadExtension();
+  }
+  async function decideExtension(approve) {
+    if (!__extPending) return;
+    let note = null;
+    if (approve) { if (!(await customConfirm(`Move the due date to ${dmyDate(__extPending.new_due)}?`, { title: 'Approve more time', confirmText: 'Approve' }))) return; }
+    else { note = await customPrompt('Reason for declining (optional, the person will see it):', '', { title: 'Decline request', okText: 'Decline' }); if (note === null) return; }
+    const { error } = await supabaseClient.rpc('decide_extension', { p_id: __extPending.id, p_approve: approve, p_note: note });
+    if (error) { showToast('error', 'Could not save', error.message); return; }
+    showToast('success', approve ? 'New due date set' : 'Request declined', '');
+    window.location.reload();
+  }
+
   /* ---------- Timeline (updates + comments) ---------- */
   function renderTimeline(updates) {
     const el = document.getElementById('timeline');
@@ -301,7 +430,7 @@
                 ${u.is_system ? icon('eye', 13) : icon('eye-off', 13)}
               </button>` : ''}
           </div>
-          <div style="font-size:.84rem; color:var(--ink-soft); margin-top:3px;">${highlightMentions(u.update_text, teamRoster)}</div>
+          <div style="font-size:.84rem; color:var(--ink-soft); margin-top:3px;">${linkify(highlightMentions(u.update_text, teamRoster))}</div>
           ${!isComment && u.old_status && u.new_status && u.old_status !== u.new_status ? `
             <div style="margin-top:6px; display:flex; align-items:center; gap:6px;">
               <span class="status-pill ${statusPillClass(u.old_status)}" style="font-size:10.5px;">${statusLabel(u.old_status)}</span>
@@ -778,7 +907,7 @@
     loadSubtasks();
     loadTimeEntries();
     loadTags();
-    loadAssignees();
+    loadAssignees().then(() => { loadTimer(); loadExtension(); });
     loadDependencies();
     loadAttachments();
   }

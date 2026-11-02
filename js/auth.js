@@ -3,11 +3,11 @@
    While it waits, a branded loading animation is shown instead of a blank page. */
 (function () {
   const CSS = `
-.euo-splash{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:radial-gradient(900px 500px at 50% 38%,#fff3ec 0%,#ffffff 60%);color:#0f172a;visibility:visible;font-family:Inter,system-ui,sans-serif;transition:opacity .45s ease,transform .45s ease}
-.euo-splash.dark{background:radial-gradient(900px 500px at 50% 38%,#2a1710 0%,#0c111b 62%);color:#e7ebf3}
+.euo-splash{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:radial-gradient(900px 500px at 50% 38%,#e8f6f6 0%,#ffffff 60%);color:#0f172a;visibility:visible;font-family:Inter,system-ui,sans-serif;transition:opacity .45s ease,transform .45s ease}
+.euo-splash.dark{background:radial-gradient(900px 500px at 50% 38%,#0d2a2a 0%,#0c111b 62%);color:#e7ebf3}
 .euo-splash.out{opacity:0;transform:scale(1.04);pointer-events:none}
 .euo-blob{position:relative;width:92px;height:92px;flex:none}
-.euo-blob .g,.euo-blob .glow{position:absolute;inset:0;background:conic-gradient(from 0deg,#F06422,#ff4d8d,#7c5cff,#22d3ee,#F06422);animation:euoMorph 5.5s ease-in-out infinite,euoTurn 4s linear infinite}
+.euo-blob .g,.euo-blob .glow{position:absolute;inset:0;background:conic-gradient(from 0deg,#009090,#0FB9AE,#F47F1F,#F06422,#009090);animation:euoMorph 5.5s ease-in-out infinite,euoTurn 4s linear infinite}
 .euo-blob .glow{filter:blur(18px);opacity:.55}
 .euo-blob .in{position:absolute;inset:7px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;animation:euoPop 2.2s ease-in-out infinite}
 .euo-dark .euo-blob .in,.euo-splash.dark .euo-blob .in{background:#0c111b}
@@ -25,7 +25,7 @@
 .euo-skel i:nth-child(1){width:42%;height:16px}.euo-skel i:nth-child(2){width:96%}.euo-skel i:nth-child(3){width:78%}.euo-skel i:nth-child(4){width:60%}
 .euo-bar{position:fixed;left:0;top:0;height:3px;width:100%;z-index:2147483100;overflow:hidden;opacity:0;transition:opacity .25s;pointer-events:none}
 .euo-bar.on{opacity:1}
-.euo-bar::before{content:"";position:absolute;top:0;bottom:0;width:38%;border-radius:3px;background:linear-gradient(90deg,transparent,#F06422,#ff4d8d,#7c5cff,transparent);animation:euoSweep 1.1s ease-in-out infinite}
+.euo-bar::before{content:"";position:absolute;top:0;bottom:0;width:38%;border-radius:3px;background:linear-gradient(90deg,transparent,#009090,#0FB9AE,#F06422,transparent);animation:euoSweep 1.1s ease-in-out infinite}
 .euo-pill{position:fixed;left:50%;bottom:22px;transform:translate(-50%,24px);opacity:0;z-index:2147483100;display:flex;align-items:center;gap:10px;background:rgba(22,32,51,.92);backdrop-filter:blur(10px);color:#f3f5fa;padding:9px 16px 9px 12px;border-radius:999px;font:600 13px Inter,system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3);transition:all .3s ease;pointer-events:none;max-width:calc(100vw - 24px)}
 .euo-pill.on{opacity:1;transform:translate(-50%,0)}
 .euo-pill.off{background:rgba(127,29,29,.95)}
@@ -98,6 +98,124 @@
 })();
 function openAuthGate() { try { document.documentElement.style.visibility = ''; if (window.hideEuoSplash) window.hideEuoSplash(); } catch (e) {} }
 
+
+// ============================================================
+// Timer guard — runs on every page while a timer is on.
+//  • shows a small "timer running" chip on every page
+//  • asks before the tab/window is closed (the browser shows its own "Leave site?" box)
+//  • stops the timer if the tab is left for 2 minutes, or there is no activity for 10 minutes,
+//    and logs only the time up to the moment you left
+//  • pings the server every 30 s, so a closed page / sleeping computer never counts away time
+// ============================================================
+const EuoTimer = (() => {
+  const T = Object.assign({ hiddenMs: 120000, idleMs: 600000, beatMs: 30000, staleMs: 180000 }, window.__EUO_T || {});
+  const st = { row: null, tick: null, beat: null, hiddenAt: 0, hiddenTO: null, lastInput: Date.now(), tabId: Math.random().toString(36).slice(2), internal: false, wired: false };
+  const fmt = (ms) => { const t = Math.max(0, Math.floor(ms / 1000)); return [Math.floor(t / 3600), Math.floor(t % 3600 / 60), t % 60].map(n => String(n).padStart(2, '0')).join(':'); };
+  const onTimerPage = () => /(^|\/)(myday|task)\.html$/i.test(location.pathname);
+  const note = (k, a, b) => { try { showToast(k, a, b); } catch (e) {} };
+
+  function chip() {
+    let el = document.getElementById('euoTimerChip');
+    if (!st.row || onTimerPage()) { if (el) el.remove(); return; }
+    if (!el) {
+      el = document.createElement('div'); el.id = 'euoTimerChip';
+      el.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:2147483050;display:flex;align-items:center;gap:10px;background:#fff7ed;color:#7c2d12;border:1px solid #fdba74;border-radius:999px;padding:8px 8px 8px 14px;font:600 13px Inter,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:calc(100vw - 24px)';
+      document.body.appendChild(el);
+    }
+    const title = st.row.tasks && st.row.tasks.title ? st.row.tasks.title : 'a task';
+    el.innerHTML = `<span style="width:9px;height:9px;border-radius:50%;background:#ef4444;animation:euoPop 1.2s ease-in-out infinite;flex:none"></span>
+      <b id="euoTimerClock" style="font:700 13px 'JetBrains Mono',monospace;">00:00:00</b>
+      <a href="task.html?id=${st.row.task_id}" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:underline;color:inherit;">${escapeHtml(title)}</a>
+      <button type="button" style="border:0;background:#c2410c;color:#fff;border-radius:999px;padding:6px 12px;font:600 12px Inter,system-ui,sans-serif;cursor:pointer;" onclick="EuoTimer.stop()">Stop</button>`;
+  }
+  function paint() { const c = document.getElementById('euoTimerClock'); if (c && st.row) c.textContent = fmt(Date.now() - new Date(st.row.started_at).getTime()); }
+
+  async function stopWith(endMs, why) {
+    const { data, error } = await supabaseClient.rpc('stop_timer', endMs ? { p_end: new Date(endMs).toISOString() } : {});
+    if (error) return null;
+    const r = (data || [])[0];
+    st.row = null; arm(); chip();
+    window.dispatchEvent(new CustomEvent('euo-timer'));
+    if (r) {
+      const h = Number(r.hours);
+      if (why) note(h > 0 ? 'warning' : 'info', 'Timer stopped', why + (h > 0 ? ` ${h}h was logged.` : ' It was under a minute, so nothing was logged.'));
+      else note(h > 0 ? 'success' : 'info', h > 0 ? 'Time logged' : 'Timer stopped', h > 0 ? `${h}h added${r.capped ? ' (a timer is capped at 12 hours)' : ''}.` : 'Under a minute, so nothing was logged.');
+    }
+    return r;
+  }
+
+  const activeElsewhere = () => { try { const v = JSON.parse(localStorage.getItem('euo-active') || 'null'); return v && v.tab !== st.tabId && Date.now() - v.at < 40000; } catch (e) { return false; } };
+  const markActive = () => { try { localStorage.setItem('euo-active', JSON.stringify({ tab: st.tabId, at: Date.now() })); } catch (e) {} };
+
+  function arm() {
+    clearInterval(st.tick); clearInterval(st.beat); clearTimeout(st.hiddenTO);
+    if (!st.row) return;
+    st.tick = setInterval(paint, 1000); paint();
+    st.beat = setInterval(async () => {
+      if (!st.row) return;
+      if (document.visibilityState === 'visible') {
+        markActive();
+        if (Date.now() - st.lastInput > T.idleMs) { stopWith(st.lastInput, 'There was no activity for 10 minutes, so the timer was stopped when you went quiet.'); return; }
+        const { data, error } = await supabaseClient.rpc('timer_heartbeat');
+        if (!error && data === false) refresh();      // it had already gone quiet: settle it
+      }
+    }, T.beatMs);
+    if (document.visibilityState === 'hidden') hiddenStart();
+  }
+  function hiddenStart() {
+    clearTimeout(st.hiddenTO); st.hiddenAt = st.hiddenAt || Date.now();
+    st.hiddenTO = setTimeout(hiddenCheck, T.hiddenMs);
+  }
+  function hiddenCheck() {
+    if (!st.row || document.visibilityState !== 'hidden') return;
+    if (activeElsewhere()) { st.hiddenTO = setTimeout(hiddenCheck, 20000); return; }   // you are in another portal tab
+    stopWith(st.hiddenAt, 'The timer was stopped because you left this page.');
+  }
+
+  async function refresh() {
+    if (!window.__currentProfile) return;
+    const { data, error } = await supabaseClient.from('task_timers').select('task_id, started_at, last_seen, tasks(title)').eq('user_id', window.__currentProfile.id).maybeSingle();
+    if (error) return;
+    st.row = data || null;
+    if (st.row && Date.now() - new Date(st.row.last_seen).getTime() > T.staleMs) {
+      // the page was closed (or the computer slept) while the timer was on — settle it up to the last ping
+      await stopWith(null, 'You left while the timer was running, so it was stopped at the last moment you were here.'); return;
+    }
+    arm(); chip(); window.dispatchEvent(new CustomEvent('euo-timer'));
+  }
+
+  function wire() {
+    if (st.wired) return; st.wired = true;
+    ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(ev => window.addEventListener(ev, () => { st.lastInput = Date.now(); }, { passive: true, capture: true }));
+    document.addEventListener('visibilitychange', () => {
+      if (!st.row) return;
+      if (document.visibilityState === 'hidden') { st.hiddenAt = 0; hiddenStart(); }
+      else {
+        clearTimeout(st.hiddenTO);
+        const away = st.hiddenAt ? Date.now() - st.hiddenAt : 0, at = st.hiddenAt; st.hiddenAt = 0;
+        if (away > T.hiddenMs && !activeElsewhere()) stopWith(at, 'The timer was stopped because you left this page.');   // timers were paused by the browser
+        else { st.lastInput = Date.now(); markActive(); }
+      }
+    });
+    // clicking a link inside the portal is not "leaving"
+    document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('a[href]'); if (a && a.origin === location.origin && !a.target) { st.internal = true; setTimeout(() => { st.internal = false; }, 1500); } }, true);
+    window.addEventListener('beforeunload', (e) => { if (st.row && !st.internal) { e.preventDefault(); e.returnValue = 'Your timer is still running.'; return e.returnValue; } });
+  }
+  return { init() { wire(); return refresh(); }, refresh, stop: () => stopWith(null, null), running: () => !!st.row };
+})();
+
+// "My Day" shortcut at the top of every sidebar (added here so no page needs editing)
+function addMyDayLink(profile) {
+  try {
+    const nav = document.querySelector('.portal-sidebar nav');
+    if (!nav || nav.querySelector('a[href="myday.html"]') || profile.role === 'marketing') return;
+    const a = document.createElement('a');
+    a.className = 'portal-nav-item'; a.href = 'myday.html';
+    a.innerHTML = '<span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span> My Day';
+    nav.insertBefore(a, nav.firstChild);
+  } catch (e) {}
+}
+
 // ============================================================
 // Auth helpers shared across every page
 // ============================================================
@@ -111,15 +229,25 @@ async function requireAuth(opts) {
     window.location.href = 'index.html';
     return null;
   }
-  const { data: profile, error } = await supabaseClient
+  let { data: profile, error } = await supabaseClient
     .from('profiles')
-    .select('id, name, email, role, avatar_color, created_at')
+    .select('id, name, email, role, avatar_color, created_at, suspended')
     .eq('id', session.user.id)
     .single();
+  if (error) {   // database not updated with the suspension column yet: carry on without it
+    ({ data: profile, error } = await supabaseClient.from('profiles').select('id, name, email, role, avatar_color, created_at').eq('id', session.user.id).single());
+  }
 
   if (error || !profile) {
     console.error('Could not load profile', error);
     window.location.href = 'index.html';
+    return null;
+  }
+  // A suspended person is signed out straight away (the database also refuses them everything).
+  if (profile.suspended) {
+    try { sessionStorage.setItem('euo-suspended', '1'); } catch (e) {}
+    try { await supabaseClient.auth.signOut(); } catch (e) {}
+    window.location.replace('index.html');
     return null;
   }
   window.__currentProfile = profile;
@@ -136,6 +264,7 @@ async function requireAuth(opts) {
     window.location.replace('dashboard.html');
     return null;
   }
+  addMyDayLink(profile);
   startPresence(profile.id);
   openAuthGate();
   if (opts.standalone) {
@@ -144,6 +273,7 @@ async function requireAuth(opts) {
   }
   initNotifications();
   initTopBar();
+  EuoTimer.init();
   applyRoleBadge(profile);
   checkDueReminders(profile);
   return { user: session.user, profile };
@@ -673,8 +803,8 @@ async function refreshNotifications() {
   }
   list.innerHTML = data.map(n => `
     <a href="task.html?id=${n.task_id}" onclick="markNotificationRead('${n.id}')" style="display:block; padding:8px 10px; border-radius:8px; margin-bottom:2px; ${n.is_read ? '' : 'background:#eff6ff;'}">
-      <div style="font-size:.8rem;"><b>${escapeHtml(n.actor?.name || 'Someone')}</b> mentioned you</div>
-      <div class="portal-note" style="font-size:.74rem; margin-top:2px;">${escapeHtml(n.tasks?.title || 'a task')} — ${escapeHtml((n.task_updates?.update_text || '').slice(0, 60))}</div>
+      <div style="font-size:.8rem;">${n.message ? escapeHtml(n.message) : `<b>${escapeHtml(n.actor?.name || 'Someone')}</b> mentioned you`}</div>
+      <div class="portal-note" style="font-size:.74rem; margin-top:2px;">${escapeHtml(n.tasks?.title || 'a task')}${n.task_updates?.update_text ? ' — ' + escapeHtml(n.task_updates.update_text.slice(0, 60)) : ''}</div>
       <div class="portal-note" style="font-size:.68rem; margin-top:2px;">${timeAgo(n.created_at)}</div>
     </a>
   `).join('');

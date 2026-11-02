@@ -55,6 +55,17 @@
 
     <div class="portal-stats-grid" id="statCards"></div>
 
+    <div id="adminPanels" style="display:none;">
+      <div class="portal-section">
+        <div class="portal-section-head"><h2>Waiting for your decision <span class="portal-note" id="extCount" style="font-weight:400;"></span></h2></div>
+        <div id="extList"></div>
+      </div>
+      <div class="portal-section">
+        <div class="portal-section-head"><h2>Working now</h2></div>
+        <div id="workingNow"></div>
+      </div>
+    </div>
+
     <div class="portal-section">
       <div class="portal-section-head"><h2>Recent Updates</h2></div>
       <div class="portal-table-wrap" style="padding:14px;">
@@ -67,6 +78,42 @@
 <script src="js/supabase-config.js"></script>
 <script src="js/auth.js"></script>
 <script>
+  async function loadAdminPanels() {
+    const wrap = document.getElementById('adminPanels'); if (!wrap) return;
+    const dmyD = (d) => { const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}-${m}-${y}`; };
+    const [ext, tm] = await Promise.all([
+      supabaseClient.from('due_extension_requests').select('id, task_id, old_due, new_due, reason, created_at, who:profiles!due_extension_requests_requested_by_fkey(name), tasks(title)').eq('status', 'pending').order('created_at'),
+      supabaseClient.from('task_timers').select('started_at, task_id, who:profiles!task_timers_user_id_fkey(name), tasks(title)').gte('last_seen', new Date(Date.now() - 180000).toISOString()).order('started_at')
+    ]);
+    if (ext.error && tm.error) return;   // migration-v32 not run yet
+    wrap.style.display = 'block';
+    const reqs = ext.data || [];
+    document.getElementById('extCount').textContent = reqs.length ? `· ${reqs.length} request${reqs.length === 1 ? '' : 's'} for more time` : '';
+    document.getElementById('extList').innerHTML = reqs.length ? reqs.map(r => `
+      <div class="portal-project-card" style="padding:12px 14px; margin-bottom:8px;">
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <div style="flex:1; min-width:220px;">
+            <b>${escapeHtml(r.who ? r.who.name : 'Someone')}</b> wants <a href="task.html?id=${r.task_id}" style="text-decoration:underline;">${escapeHtml(r.tasks ? r.tasks.title : 'a task')}</a> moved from <b>${dmyD(r.old_due)}</b> to <b>${dmyD(r.new_due)}</b>
+            <div class="portal-note" style="margin-top:3px;">“${escapeHtml(r.reason)}”</div>
+          </div>
+          <button class="btn btn-secondary" style="padding:7px 14px; font-size:12.5px;" onclick="decideExt('${r.id}', false)">Decline</button>
+          <button class="btn btn-primary" style="padding:7px 14px; font-size:12.5px;" onclick="decideExt('${r.id}', true)">Approve</button>
+        </div></div>`).join('') : '<p class="portal-note">No requests waiting.</p>';
+    const timers = tm.data || [];
+    document.getElementById('workingNow').innerHTML = timers.length ? timers.map(t => {
+      const mins = Math.max(0, Math.round((Date.now() - new Date(t.started_at).getTime()) / 60000));
+      return `<div class="portal-note" style="padding:6px 2px; font-size:.84rem;"><span style="color:#ef4444;">●</span> <b>${escapeHtml(t.who ? t.who.name : 'Someone')}</b> — <a href="task.html?id=${t.task_id}" style="text-decoration:underline;">${escapeHtml(t.tasks ? t.tasks.title : 'a task')}</a> · ${mins >= 60 ? Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm' : mins + ' min'}</div>`;
+    }).join('') : '<p class="portal-note">Nobody has a timer running right now.</p>';
+  }
+  async function decideExt(id, approve) {
+    let note = null;
+    if (approve) { if (!(await customConfirm('Approve this request and move the due date?', { title: 'Approve more time', confirmText: 'Approve' }))) return; }
+    else { note = await customPrompt('Reason for declining (optional, the person will see it):', '', { title: 'Decline request', okText: 'Decline' }); if (note === null) return; }
+    const { error } = await supabaseClient.rpc('decide_extension', { p_id: id, p_approve: approve, p_note: note });
+    if (error) { showToast('error', 'Could not save', error.message); return; }
+    showToast('success', approve ? 'New due date set' : 'Request declined', '');
+    loadAdminPanels();
+  }
   (async () => {
     const auth = await requireAuth();
     if (!auth) return;
@@ -75,7 +122,7 @@
     document.getElementById('userAvatar').textContent = initials(profile.name);
     document.getElementById('userName').textContent = profile.name;
     document.getElementById('greeting').textContent = `Welcome back, ${profile.name.split(' ')[0]}`;
-    if (isAdmin(profile)) document.getElementById('teamLink').style.display = 'flex';
+    if (isAdmin(profile)) { document.getElementById('teamLink').style.display = 'flex'; loadAdminPanels(); }
 
     let taskQuery = supabaseClient.from('tasks').select('id, status', { count: 'exact' });
     // Non-admins are already scoped by the tasks RLS policy (assigned, co-assigned or created).

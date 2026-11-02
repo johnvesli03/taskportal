@@ -1,3 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&display=swap');
+/* ================================================================
+   EUODOO PORTAL — same stylesheet as the Employee Portal
+   (flat shadowed cards, pill sidebar, underline tabs, teal accent; Sora + Inter fonts).
+   Task-Portal-only pieces (collapsible sidebar, assignee picker, ID chips,
+   danger button, sidebar footer) are kept at the end of this file.
+   ================================================================ */
 /* ================================================================
    EUODOO EMPLOYEE PORTAL — supplemental styles
    Premium corporate treatment: flat surfaces, restrained color
@@ -13,6 +20,7 @@
    1. TOKENS — page-scoped overrides on top of styles.css variables
    ================================================================ */
 .portal-page {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   --r-xs: 6px;
   --r-sm: 8px;
   --r-md: 12px;
@@ -48,7 +56,7 @@
 .portal-page * { scroll-behavior: smooth; }
 
 .portal-page ::selection {
-  background: rgba(240, 100, 34, 0.16);
+  background: rgba(0, 144, 144, 0.16);
   color: var(--ink);
 }
 
@@ -232,8 +240,8 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
   color: #a3adc9;
   font-weight: 500;
   font-size: .85rem;
@@ -245,13 +253,13 @@
               color var(--dur-fast) var(--ease-standard),
               transform var(--dur-fast) var(--ease-standard);
 }
-.portal-nav-item:hover { background: rgba(255, 255, 255, 0.06); color: #e6e9f4; padding-left: 12px; }
+.portal-nav-item:hover { background: rgba(255, 255, 255, 0.06); color: #e6e9f4; }
 .portal-nav-item:active { transform: scale(0.98); }
 .portal-nav-item.active {
   background: var(--primary);
   color: #fff;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(240, 100, 34, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 144, 144, 0.35);
 }
 .portal-nav-icon {
   width: 22px;
@@ -269,37 +277,99 @@
 .portal-nav-icon svg { display: block; }
 .portal-nav-item:hover .portal-nav-icon { transform: scale(1.06); }
 
+/* Avatar card at the TOP of the sidebar */
+.portal-who-top {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 6px 6px 16px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.portal-bell {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  background: transparent;
+  border: none;
+  color: #8b96b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+}
+.portal-bell:hover { background: rgba(255, 255, 255, 0.06); color: #e6e9f4; }
+.portal-bell-dot {
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 1.5px solid #16213e;
+}
+.portal-notif-panel {
+  position: absolute;
+  top: 40px;
+  right: -8px;
+  width: 260px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--shadow-xl);
+  z-index: 60;
+  overflow: hidden;
+  animation: portalScaleIn var(--dur-base) var(--ease-spring);
+}
+.portal-notif-panel-head {
+  padding: 12px 14px;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--ink);
+  border-bottom: 1px solid var(--border-rule);
+}
+.portal-notif-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 14px;
+  cursor: pointer;
+  font-size: .82rem;
+  color: var(--ink);
+  border-bottom: 1px solid var(--border-rule);
+  transition: background var(--dur-fast) var(--ease-standard);
+}
+.portal-notif-item:last-child { border-bottom: none; }
+.portal-notif-item:hover { background: var(--n-bg-hover); }
+.portal-notif-empty { padding: 18px 14px; font-size: .82rem; color: var(--ink-muted); text-align: center; }
+.portal-who-avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--primary);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 1.15rem; flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  margin-bottom: 10px;
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+.portal-who-avatar:hover { transform: scale(1.08) rotate(-4deg); }
+.portal-who-top b {
+  display: block;
+  color: #f1f2f8;
+  font-size: .95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.portal-who-top b:hover { color: #fff; }
+#who-designation { color: #8b96b8 !important; margin: 2px 0 8px; }
+
 .portal-sidebar-footer {
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
-.portal-who {
-  font-size: .82rem;
-  color: #a3adc9;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.portal-who-avatar {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: var(--primary);
-  color: #fff; display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: .82rem; flex-shrink: 0;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  transition: transform var(--dur-base) var(--ease-spring);
-}
-.portal-who-avatar:hover { transform: scale(1.08) rotate(-4deg); }
-.portal-who-text b {
-  display: block;
-  color: #f1f2f8;
-  font-size: .88rem;
-  font-weight: 600;
-  transition: color var(--dur-fast) var(--ease-standard);
-}
-.portal-who-text b:hover { color: #fff; }
-#who-designation { color: #8b96b8 !important; }
+.portal-pill-btn { border-radius: 999px !important; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .portal-sidebar-footer .btn-secondary {
   background: rgba(255, 255, 255, 0.06);
   color: #e6e9f4;
@@ -307,78 +377,41 @@
 }
 .portal-sidebar-footer .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
 
-.portal-content { min-width: 0; }
-
-/* ================================================================
-   5b. COLLAPSIBLE SIDEBAR — persisted per-browser via localStorage,
-   toggled with the tab docked on the sidebar's edge (injected by
-   initSidebarCollapse() in auth.js). Collapsing frees up width for
-   the content pane, which otherwise now runs full-bleed (no more
-   1200px cap) on wide screens.
-   ================================================================ */
-.portal-shell { transition: grid-template-columns var(--dur-slow) var(--ease-standard); }
-.portal-sidebar { transition: width var(--dur-slow) var(--ease-standard), padding var(--dur-fast) var(--ease-standard); }
-
-.sidebar-collapse-tab {
-  position: absolute; top: 18px; right: -11px; z-index: 5;
-  width: 22px; height: 22px; border-radius: 50%;
-  background: var(--surface); color: var(--ink-soft);
-  border: 1px solid var(--border-rule);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; box-shadow: var(--shadow-sm);
-  transition: background var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+.portal-content {
+  min-width: 0;
+  background:
+    radial-gradient(900px 400px at 15% -10%, rgba(0, 144, 144, 0.05), transparent),
+    radial-gradient(700px 350px at 100% 0%, rgba(47, 143, 174, 0.04), transparent);
+  border-radius: 16px;
 }
-.sidebar-collapse-tab:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
-.sidebar-collapse-tab svg { transition: transform var(--dur-base) var(--ease-standard); display: block; }
-
-body.sidebar-collapsed .portal-shell { grid-template-columns: 72px 1fr; }
-body.sidebar-collapsed .portal-sidebar { padding: 16px 8px; }
-body.sidebar-collapsed .sidebar-collapse-tab svg { transform: rotate(180deg); }
-
-/* Hide text labels while keeping each icon centered — the icon
-   itself is sized in px (not em), so zeroing the parent's font-size
-   collapses only the adjacent text node, no markup changes needed. */
-body.sidebar-collapsed .portal-nav-item {
-  font-size: 0; justify-content: center; gap: 0; padding: 12px 0;
-}
-body.sidebar-collapsed .portal-nav-item:hover { padding-left: 0; }
-body.sidebar-collapsed .sidebar-brand-label,
-body.sidebar-collapsed .portal-who-text { display: none; }
-body.sidebar-collapsed .sidebar-brand-row { justify-content: center; }
-body.sidebar-collapsed .portal-who { justify-content: center; }
-
-@media (max-width: 860px) {
-  body.sidebar-collapsed .portal-shell { grid-template-columns: 1fr; }
-  .sidebar-collapse-tab { display: none; }
-}
-
-/* ================================================================
-   5c. DESTRUCTIVE ACTIONS & ID CHIPS — shared across Team /
-   Project / Task pages instead of one-off inline styles.
-   ================================================================ */
-.btn-danger {
-  background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;
-}
-.btn-danger:hover { background: #fee2e2; border-color: #fca5a5; }
-body.dark-mode .btn-danger { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
-body.dark-mode .btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
-
-.id-chip {
-  display: inline-flex; align-items: center;
-  font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
-  padding: 4px 10px; border-radius: 999px;
-  background: var(--n-bg-subtle, #f8f9fb); color: var(--ink-soft);
-  border: 1px solid var(--border-rule);
-}
-.id-chip.is-missing { background: #fef2f2; color: #b91c1c; border-color: #fecaca; font-family: var(--font-body); font-weight: 600; }
-body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
-
-.portal-cell-stack { display: flex; flex-direction: column; gap: 2px; }
 
 .portal-tab { display: none; }
 .portal-tab.active {
   display: block;
-  animation: portalFadeInUp var(--dur-base) var(--ease-decel);
+  animation: portalTabIn .5s cubic-bezier(.16,1,.3,1) .12s both;
+}
+.portal-tab.is-loading { display: block; opacity: 0; pointer-events: none; }
+.portal-tab.is-leaving { display: block; animation: portalTabOut .14s ease-in both; pointer-events: none; }
+.portal-tab.active > * { animation: portalTabChild .5s cubic-bezier(.16,1,.3,1) both; }
+.portal-tab.active > *:nth-child(2) { animation-delay: .05s; }
+.portal-tab.active > *:nth-child(3) { animation-delay: .1s; }
+.portal-tab.active > *:nth-child(4) { animation-delay: .15s; }
+.portal-tab.active > *:nth-child(n+5) { animation-delay: .2s; }
+@keyframes portalTabIn { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes portalTabOut { to { opacity: 0; transform: translateX(-14px); } }
+@keyframes portalTabChild { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* route progress bar */
+#portal-route-bar { position: fixed; top: 0; left: 0; height: 3px; width: 100%; z-index: 10040; pointer-events: none;
+  background: linear-gradient(90deg, #0d9488, #ea580c); transform: scaleX(0); transform-origin: left; opacity: 0; }
+#portal-route-bar.run { opacity: 1; transform: scaleX(.8); transition: transform .5s cubic-bezier(.2,.8,.2,1); }
+#portal-route-bar.done { opacity: 0; transform: scaleX(1); transition: transform .2s ease, opacity .35s ease .15s; }
+@media (prefers-reduced-motion: reduce) {
+  .portal-tab.active { animation: portalFadeOnly .4s ease both !important; }
+  .portal-tab.active > * { animation: none !important; }
+  .portal-tab.is-leaving { animation: portalFadeOut .14s ease both !important; }
+  @keyframes portalFadeOnly { from { opacity: 0; } }
+  @keyframes portalFadeOut { to { opacity: 0; } }
 }
 
 .portal-topline {
@@ -400,7 +433,8 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 
 
 /* ================================================================
-   6. CLOCK WIDGET
+   6. CLOCK WIDGET — segmented digit boxes (HH : MM : SS), matching
+   the reference screenshots' style
    ================================================================ */
 .portal-clock-widget {
   display: flex;
@@ -446,7 +480,9 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 
 
 /* ================================================================
-   7. BUTTONS
+   7. BUTTONS — hover/active/focus micro-interactions
+   (site's .btn / .btn-primary / .btn-secondary already exist in
+   styles.css; these add motion without changing their colors)
    ================================================================ */
 .portal-page .btn {
   transition: transform var(--dur-fast) var(--ease-standard),
@@ -492,24 +528,43 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 .portal-stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 14px;
+  margin-bottom: 26px;
 }
 .portal-stat-card {
   background: var(--surface);
-  border: 1px solid var(--border-rule);
-  border-radius: var(--r-md);
-  padding: 16px 18px;
-  transition: border-color var(--dur-base) var(--ease-standard),
-              transform var(--dur-base) var(--ease-standard);
+  border: none;
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  transition: transform var(--dur-base) var(--ease-standard),
+              box-shadow var(--dur-base) var(--ease-standard);
   animation: portalFadeInUp var(--dur-base) var(--ease-decel) both;
 }
-.portal-stat-card:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+.portal-stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .portal-stats-grid .portal-stat-card:nth-child(1) { animation-delay: 0ms; }
 .portal-stats-grid .portal-stat-card:nth-child(2) { animation-delay: 40ms; }
 .portal-stats-grid .portal-stat-card:nth-child(3) { animation-delay: 80ms; }
 .portal-stats-grid .portal-stat-card:nth-child(4) { animation-delay: 120ms; }
 .portal-stats-grid .portal-stat-card:nth-child(5) { animation-delay: 160ms; }
+
+.portal-stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.portal-stat-icon svg { width: 17px; height: 17px; display: block; }
+.portal-stat-icon--purple { background: rgba(0, 144, 144, 0.12); color: #009090; }
+.portal-stat-icon--teal   { background: rgba(15, 158, 117, 0.12); color: #0f9e75; }
+.portal-stat-icon--amber  { background: rgba(186, 117, 23, 0.14); color: #ba7517; }
+.portal-stat-icon--red    { background: rgba(163, 45, 45, 0.12); color: #a32d2d; }
+.portal-stat-icon--blue   { background: rgba(24, 95, 165, 0.12); color: #185fa5; }
 
 .portal-stat-label {
   font-size: .7rem;
@@ -550,7 +605,34 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
   letter-spacing: -0.005em;
   position: relative;
   padding-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
+.portal-section-head h2::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+.portal-link-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--primary-dark);
+  font-weight: 600;
+  font-size: .84rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: gap var(--dur-fast) var(--ease-standard);
+}
+.portal-link-arrow:hover { gap: 8px; }
+.portal-link-arrow::after { content: '→'; }
 
 
 /* ================================================================
@@ -558,10 +640,20 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
    ================================================================ */
 .portal-table-wrap {
   background: var(--surface);
-  border: 1px solid var(--border-rule);
+  border: none;
   border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
-  transition: border-color var(--dur-base) var(--ease-standard);
+}
+.portal-table-wrap--scroll {
+  max-height: 440px;
+  overflow-y: auto;
+}
+.portal-table-wrap--scroll .portal-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--n-bg-subtle);
+  z-index: 2;
 }
 .portal-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
 .portal-table thead { background: var(--n-bg-subtle); }
@@ -592,6 +684,7 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
   animation: portalFadeIn var(--dur-base) var(--ease-decel);
 }
 
+/* skeleton loading row utility — add class="portal-skel-row" while data loads */
 .portal-skel-row td { padding: 14px; }
 .portal-skel-bar {
   height: 12px;
@@ -605,24 +698,23 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 /* ================================================================
    11. TOGGLES
    ================================================================ */
-.portal-toggle-row { display: flex; gap: 6px; margin-bottom: 14px; }
+.portal-toggle-row { display: flex; gap: 22px; margin-bottom: 16px; border-bottom: 1px solid var(--border-rule); }
 .portal-toggle-btn {
-  padding: 6px 14px;
-  border-radius: var(--r-sm);
-  font-size: .8rem;
+  padding: 6px 2px 12px;
+  border-radius: 0;
+  font-size: .85rem;
   font-weight: 600;
-  border: 1px solid var(--border-rule);
-  background: #fff;
-  color: var(--ink-soft);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-muted);
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-standard),
-              color var(--dur-fast) var(--ease-standard),
-              border-color var(--dur-fast) var(--ease-standard),
-              transform var(--dur-fast) var(--ease-standard);
+  margin-bottom: -1px;
+  transition: color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard);
 }
-.portal-toggle-btn:hover { border-color: var(--border-strong); transform: translateY(-1px); }
-.portal-toggle-btn:active { transform: translateY(0); }
-.portal-toggle-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.portal-toggle-btn:hover { color: var(--ink); }
+.portal-toggle-btn:active { transform: none; }
+.portal-toggle-btn.active { background: transparent; color: var(--primary-dark); border-bottom-color: var(--primary); }
 
 
 /* ================================================================
@@ -630,13 +722,14 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
    ================================================================ */
 .portal-project-card {
   background: var(--surface);
-  border: 1px solid var(--border-rule);
-  border-radius: var(--r-md);
-  padding: 18px;
-  transition: border-color var(--dur-base) var(--ease-standard);
+  border: none;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--dur-base) var(--ease-standard);
   animation: portalFadeInUp var(--dur-base) var(--ease-decel) both;
 }
-.portal-project-card:hover { border-color: var(--border-strong); }
+.portal-project-card:hover { box-shadow: var(--shadow-md); }
 .portal-project-title { font-size: .92rem; font-weight: 600; color: var(--ink); }
 .portal-project-desc { font-size: .82rem; color: var(--ink-soft); margin-top: 6px; line-height: 1.6; }
 
@@ -682,6 +775,53 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 
 
 /* ================================================================
+   15. CALENDAR
+   ================================================================ */
+.cal-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: .74rem; color: var(--ink-muted); margin: 10px 0 8px; }
+.cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cal-swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.cal-wrap {
+  max-width: 380px;
+  animation: portalFadeIn var(--dur-base) var(--ease-decel);
+}
+.cal-weekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+  font-size: .64rem; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; letter-spacing: .03em;
+  padding: 0 1px; margin-bottom: 5px;
+}
+.cal-weekdays span { text-align: center; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-rule);
+  padding: 3px 4px;
+  cursor: pointer;
+  position: relative;
+  font-size: .66rem;
+  font-weight: 600;
+  color: var(--ink);
+  transition: border-color var(--dur-fast) var(--ease-standard),
+              transform var(--dur-fast) var(--ease-standard);
+  overflow: hidden;
+  animation: portalFadeIn var(--dur-slow) var(--ease-decel) both;
+}
+.cal-cell:hover { border-color: var(--border-strong); transform: scale(1.05); z-index: 2; }
+.cal-cell:active { transform: scale(0.97); }
+.cal-cell.cal-empty { visibility: hidden; cursor: default; animation: none; }
+.cal-cell.cal-today {
+  box-shadow: 0 0 0 2px var(--primary) inset;
+  animation: portalFadeIn var(--dur-slow) var(--ease-decel) both, portalDotPulse 3s ease-in-out infinite;
+}
+.cal-cell.cal-selected { box-shadow: 0 0 0 2px var(--ink) inset; }
+@media (max-width: 700px) {
+  .cal-wrap { max-width: 320px; }
+  .cal-cell { font-size: .6rem; padding: 2px 3px; }
+  .cal-legend { font-size: .66rem; gap: 8px; }
+}
+
+
+/* ================================================================
    16. TEAM / ADMIN PANELS
    ================================================================ */
 .portal-team-select { max-width: 280px; margin-bottom: 18px; }
@@ -697,7 +837,7 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
   border-radius: var(--r-xs);
   transition: color var(--dur-fast) var(--ease-standard), background var(--dur-fast) var(--ease-standard);
 }
-.portal-icon-btn:hover { color: var(--primary-dark); background: rgba(240, 100, 34, 0.06); }
+.portal-icon-btn:hover { color: var(--primary-dark); background: rgba(0, 144, 144, 0.06); }
 .portal-icon-btn:active { transform: scale(0.96); }
 
 .portal-note { color: var(--ink-muted); font-size: .82rem; }
@@ -706,6 +846,10 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 /* ================================================================
    17. FORMS / MODALS
    ================================================================ */
+/* Compact overrides — styles.css's modal/heading/button sizing is
+   built for big marketing CTAs (huge headline, pill buttons with
+   generous padding). Scoped to .portal-page so settings-style forms
+   read as a utility form, not a pitch popup. Marketing pages untouched. */
 .portal-page .premium-modal__dialog {
   padding: 30px;
   width: min(460px, calc(100% - 32px));
@@ -754,7 +898,7 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 }
 .premium-modal__dialog .portal-field select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(240, 100, 34, 0.10);
+  box-shadow: 0 0 0 3px rgba(0, 144, 144, 0.10);
   outline: none;
 }
 .premium-modal__dialog .input-box,
@@ -764,7 +908,7 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 }
 .premium-modal__dialog .input-box:focus,
 .premium-modal__dialog textarea:focus {
-  box-shadow: 0 0 0 3px rgba(240, 100, 34, 0.10);
+  box-shadow: 0 0 0 3px rgba(0, 144, 144, 0.10);
 }
 .premium-modal__actions { display: flex; gap: 10px; margin-top: 18px; }
 
@@ -781,7 +925,36 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 
 
 /* ================================================================
-   19. TOAST NOTIFICATIONS
+   18. TOOLTIP UTILITY — add class="portal-tip" + data-tip="..."
+   ================================================================ */
+.portal-tip { position: relative; }
+.portal-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--ink);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: var(--r-xs);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+  z-index: 50;
+}
+.portal-tip:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+
+/* ================================================================
+   19. TOAST NOTIFICATIONS — fixed top-right, auto-dismiss.
+   Wired to real events via JS showToast(type, title, message).
    ================================================================ */
 .portal-toast-container {
   position: fixed;
@@ -830,7 +1003,27 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 
 
 /* ================================================================
-   20. LOADING SPINNER
+   19b. LEGACY INLINE ALERT UTILITY (kept for any future inline use)
+   ================================================================ */
+.portal-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--r-sm);
+  font-size: .84rem;
+  font-weight: 500;
+  border: 1px solid var(--border-rule);
+  background: var(--surface);
+  animation: portalSlideInRight var(--dur-base) var(--ease-decel);
+}
+.portal-toast--success { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+.portal-toast--error { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+.portal-toast--info { border-color: var(--border-strong); background: rgba(0, 144, 144, 0.04); color: var(--primary-dark); }
+
+
+/* ================================================================
+   20. LOADING SPINNER UTILITY — class="portal-spinner"
    ================================================================ */
 .portal-spinner {
   width: 18px; height: 18px;
@@ -840,6 +1033,12 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
   display: inline-block;
   animation: portalSpin 0.7s linear infinite;
 }
+
+
+/* ================================================================
+   21. EMPTY STATE / MISC
+   ================================================================ */
+.portal-empty-row { animation: portalFadeIn var(--dur-base) var(--ease-decel); }
 
 
 /* ================================================================
@@ -888,7 +1087,25 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 
 
 /* ================================================================
-   25. NOTIFICATION DOTS
+   24. PRINT
+   ================================================================ */
+@media print {
+  .portal-sidebar,
+  .dark-toggle,
+  .btn,
+  .portal-nav-item { display: none !important; }
+  .portal-shell { display: block; }
+  .portal-table-wrap,
+  .portal-stat-card,
+  .portal-project-card { border: 1px solid #999 !important; }
+  body { background: #fff !important; }
+}
+
+
+/* ================================================================
+   25. NOTIFICATION DOTS — small badge on a nav icon, e.g. for
+   pending approvals/leave/queries. Add <span class="portal-dot"></span>
+   inside the nav item next to the icon when count > 0.
    ================================================================ */
 .portal-nav-item { position: relative; }
 .portal-dot {
@@ -902,10 +1119,25 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
   border: 1.5px solid var(--surface);
   animation: portalScaleIn var(--dur-base) var(--ease-spring);
 }
+.portal-dot--count {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: .64rem;
+  font-weight: 700;
+  margin-left: auto;
+}
 
 
 /* ================================================================
-   26. SKELETON LOADER VARIANTS
+   26. SKELETON LOADER VARIANTS — shown while data fetches
    ================================================================ */
 .portal-skel-avatar {
   width: 30px; height: 30px; border-radius: 50%;
@@ -922,6 +1154,23 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
   animation: portalShimmer 1.4s ease-in-out infinite;
 }
 .portal-skel-text:last-child { margin-bottom: 0; width: 60%; }
+.portal-skel-card {
+  border: 1px solid var(--border-rule);
+  border-radius: var(--r-md);
+  padding: 18px;
+  background: var(--surface);
+}
+
+
+/* ================================================================
+   27. TABLE CELL UTILITIES
+   ================================================================ */
+.portal-table td.num,
+.portal-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.portal-table td.center,
+.portal-table th.center { text-align: center; }
+.portal-table td .portal-cell-stack { display: flex; flex-direction: column; gap: 2px; }
+.portal-table td .portal-cell-stack small { color: var(--ink-muted); font-size: .74rem; }
 
 
 /* ================================================================
@@ -954,7 +1203,161 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 
 
 /* ================================================================
-   41. TIMELINE ROWS — used for update history (peach/mint/sky)
+   29. KEYBOARD HINT CHIP (for future shortcuts, e.g. "N" to add)
+   ================================================================ */
+.portal-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--border-strong);
+  background: var(--n-bg-subtle);
+  color: var(--ink-soft);
+  font-size: .68rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+
+/* ================================================================
+   30. FORM VALIDATION MOTION
+   ================================================================ */
+@keyframes portalShake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+.portal-page .input-box.is-invalid,
+.portal-page textarea.is-invalid {
+  border-color: #ef4444 !important;
+  animation: portalShake 0.4s var(--ease-standard);
+}
+
+
+/* ================================================================
+   31. SCROLL FADE MASK — used on the mobile horizontal sidebar so
+   the overflow edge doesn't look like a hard cut-off
+   ================================================================ */
+@media (max-width: 860px) {
+  .portal-sidebar {
+    mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent);
+  }
+}
+
+
+/* ================================================================
+   32. STATUS PILL COLOR REFINEMENTS (page-scoped hover/transition
+   layered on top of styles.css's .status-green/.status-blue/.status-gold)
+   ================================================================ */
+.portal-page .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  transition: transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
+}
+.portal-page .status-green:hover,
+.portal-page .status-blue:hover,
+.portal-page .status-gold:hover,
+.portal-page .status-red:hover,
+.portal-page .status-halfday:hover,
+.portal-page .status-muted:hover { box-shadow: var(--shadow-md); }
+
+
+/* ================================================================
+   33. CARD ENTRANCE STAGGER FOR GENERIC GRIDS
+   (applies to any .portal-stats-grid / repeated .portal-project-card
+   siblings beyond the first 5 defined earlier, using a broader
+   nth-of-type fallback so longer lists still stagger gracefully)
+   ================================================================ */
+.portal-stats-grid > *:nth-child(n+6) { animation-delay: 200ms; }
+.portal-project-card + .portal-project-card { animation-delay: 60ms; }
+
+
+/* ================================================================
+   34. SIDEBAR ACTIVE INDICATOR — animated underline growth for the
+   currently open tab label, layered under the existing left-border
+   accent for a subtle extra polish on wide screens
+   ================================================================ */
+@media (min-width: 861px) {
+  .portal-nav-item.active::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 2px;
+    height: 1px;
+    background: rgba(0, 144, 144, 0.18);
+    transform-origin: left center;
+    animation: portalUnderlineGrow var(--dur-slow) var(--ease-decel);
+  }
+}
+
+
+/* ================================================================
+   35. PUNCH BUTTON EMPHASIS — the primary Clock In/Out action gets
+   a touch more presence since it's the single most-used control
+   ================================================================ */
+#punch-btn {
+  min-width: 128px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+#punch-btn:not(:disabled) {
+  animation: portalFadeIn var(--dur-base) var(--ease-decel);
+}
+#punch-hint {
+  transition: color var(--dur-base) var(--ease-standard);
+  animation: portalFadeIn var(--dur-base) var(--ease-decel);
+}
+
+
+/* ================================================================
+   36. LEAVE BALANCE CARDS — slightly distinct treatment so they
+   read as a summary strip rather than blending into generic stats
+   ================================================================ */
+#leave-balance-stats .portal-stat-card {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--n-bg-subtle) 100%);
+}
+
+
+/* ================================================================
+   37. OPTIONAL HOLIDAY / SUPPORT QUERY ROW ACCENTS
+   ================================================================ */
+.portal-table tbody tr:has(.priority-high) { border-left: 2px solid transparent; }
+.portal-table tbody tr:has(.priority-high) td:first-child { box-shadow: inset 2px 0 0 #ef4444; }
+
+
+/* ================================================================
+   38. PRINT REFINEMENTS (extends section 24)
+   ================================================================ */
+@media print {
+  .portal-auth-section,
+  .premium-modal,
+  #announcements-banner,
+  .cal-legend { display: none !important; }
+  .portal-table th, .portal-table td { padding: 6px 8px; font-size: 11px; }
+  a[href]::after { content: ''; }
+}
+
+
+/* ================================================================
+   39. HIGH-CONTRAST / FORCED-COLORS SAFETY NET
+   ================================================================ */
+@media (forced-colors: active) {
+  .portal-nav-item.active { border-left-color: Highlight; }
+  .cal-cell.cal-today { forced-color-adjust: none; box-shadow: 0 0 0 2px Highlight inset; }
+}
+
+
+/* ================================================================
+   41. TIMELINE ROWS — used for the audit log, matching the reference
+   screenshots' pastel-accent Career History timeline
    ================================================================ */
 .portal-timeline-row {
   display: flex;
@@ -982,26 +1385,651 @@ body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color:
 .portal-timeline-row--sky { background: #eaf3fd; }
 .portal-timeline-row--sky .portal-timeline-icon { color: #2563eb; }
 
+
+/* ================================================================
+   42. LIST-ROW HOVER RETROFIT — Holidays, Announcements, Blackout
+   dates, Projects, and Performance lists all render as bordered
+   divs inside .portal-project-card without their own class. This
+   catches them all with one rule instead of touching every template.
+   ================================================================ */
+.portal-project-card > div[style*="border-bottom"] {
+  transition: background var(--dur-fast) var(--ease-standard);
+  border-radius: 6px;
+}
+.portal-project-card > div[style*="border-bottom"]:hover {
+  background: var(--n-bg-hover);
+}
+
+/* Heatmap day-count badge — quick pop-in so the number feels alive */
+.cal-cell > div { animation: portalScaleIn var(--dur-fast) var(--ease-spring); }
+
+
+/* ================================================================
+   41. PERFORMANCE — CARD LIST, CHIPS, TREND CHART
+   ================================================================ */
+.portal-perf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.portal-perf-card {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid var(--border-rule);
+  transition: transform var(--dur-base) var(--ease-standard),
+              box-shadow var(--dur-base) var(--ease-standard),
+              border-color var(--dur-base) var(--ease-standard);
+  animation: portalFadeInUp var(--dur-base) var(--ease-decel) both;
+}
+.portal-perf-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+.portal-perf-card--good { border-left-color: #10b981; }
+.portal-perf-card--ok   { border-left-color: #ba7517; }
+.portal-perf-card--low  { border-left-color: #ef4444; }
+
+.portal-perf-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.portal-perf-card__period {
+  font-weight: 700;
+  font-size: .92rem;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.portal-perf-card__stars {
+  color: #ba7517;
+  font-size: 1rem;
+  letter-spacing: 1px;
+}
+
+.portal-perf-card__num {
+  color: var(--ink-muted);
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin-left: 4px;
+}
+
+.portal-perf-card__ack { flex-shrink: 0; }
+
+.portal-perf-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.portal-perf-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: .74rem;
+  font-weight: 600;
+  background: var(--n-bg-subtle);
+  color: var(--ink-soft);
+  border: 1px solid var(--border-rule);
+  transition: background var(--dur-fast) var(--ease-standard);
+}
+.portal-perf-chip--extra {
+  background: rgba(0, 144, 144, 0.06);
+  color: var(--primary-dark);
+  border-color: rgba(0, 144, 144, 0.14);
+}
+
+.portal-perf-card__note {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--n-bg-subtle);
+  border-radius: 10px;
+  font-size: .86rem;
+  color: var(--ink-soft);
+  line-height: 1.6;
+  border-left: 3px solid var(--border-strong);
+}
+
+.portal-perf-dot {
+  cursor: pointer;
+  transition: r var(--dur-fast) var(--ease-standard);
+}
+.portal-perf-dot:hover { r: 7; }
+
+/* ---- Employee-side only: richer tier-tinted backgrounds ----
+   Scoped to #tab-performance so the admin Team panel view of an
+   employee's reviews keeps the plainer, more neutral look. */
+#tab-performance .portal-perf-card--good {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), var(--surface) 55%);
+}
+#tab-performance .portal-perf-card--ok {
+  background: linear-gradient(135deg, rgba(186, 117, 23, 0.07), var(--surface) 55%);
+}
+#tab-performance .portal-perf-card--low {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.07), var(--surface) 55%);
+}
+#tab-performance .portal-perf-card { border-left-width: 5px; }
+#tab-performance .portal-perf-card__period { font-size: 1rem; }
+#tab-performance .portal-perf-card__stars { font-size: 1.1rem; }
+
+/* ---- Mobile: Performance section ---- */
+@media (max-width: 640px) {
+  .portal-perf-card { padding: 14px 16px; }
+  .portal-perf-card__head { flex-direction: column; align-items: stretch; gap: 8px; }
+  .portal-perf-card__ack { align-self: flex-start; }
+  .portal-perf-card__stars { font-size: .92rem; }
+  .portal-perf-chip { font-size: .7rem; padding: 3px 9px; }
+  #perf-trend-chart svg { height: 130px !important; }
+}
+
+@media (max-width: 400px) {
+  .portal-perf-card { padding: 12px 14px; border-left-width: 3px; }
+  .portal-perf-card__period { font-size: .86rem; }
+  .portal-perf-card__note { font-size: .82rem; padding: 8px 11px; }
+}
+
+
+/* ================================================================
+   39. MOBILE — FULL PORTAL COVERAGE (every tab: dashboard,
+   attendance, projects, leave, support, performance, overview,
+   team, plus auth/login and shared chrome). Layered on top of the
+   earlier responsive rules in section 23; this section fills the
+   gaps those didn't reach and fixes inline `style=""` grid columns
+   that need !important to be overridden from a stylesheet.
+   ================================================================ */
+
+/* ---- Auth / login screens ---- */
+@media (max-width: 560px) {
+  .portal-auth-section .container { padding-left: 16px; padding-right: 16px; }
+  .portal-auth-card { padding: 22px 16px; border-radius: var(--r-md); }
+  .portal-auth-card h1 { font-size: 1.35rem; }
+  .portal-auth-card p.portal-auth-desc { font-size: .86rem; }
+}
+
+/* ---- Shell / container spacing ---- */
+@media (max-width: 860px) {
+  #appSection .container { padding-left: 14px; padding-right: 14px; }
+  .portal-content { border-radius: 12px; }
+}
+
+/* ---- Sidebar-as-horizontal-nav refinements (base collapse is in
+   section 23; this tightens it for actual phone widths) ---- */
+@media (max-width: 640px) {
+  .portal-sidebar { padding: 10px 8px; gap: 2px; }
+  .portal-who-top { display: none; } /* avatar/name card wastes width once nav is a horizontal strip */
+  .portal-nav-item { padding: 8px 12px; font-size: .78rem; white-space: nowrap; }
+  .portal-nav-icon { width: 18px; height: 18px; }
+  .portal-notif-panel { width: min(280px, calc(100vw - 32px)); right: 0; left: auto; }
+}
+
+/* ---- Topline (page title + primary action) on every tab ---- */
+@media (max-width: 640px) {
+  .portal-topline { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 18px; }
+  .portal-topline > div:first-child { width: 100%; }
+  .portal-topline .btn,
+  .portal-topline > div[style*="display:flex"] { width: 100%; }
+  .portal-topline > div[style*="display:flex"] { flex-wrap: wrap; }
+  .portal-topline .btn { width: 100%; justify-content: center; }
+  /* two-button rows (e.g. Team's "+ Add Employee" / "+ Bulk Add") split evenly instead of full-width stacking */
+  .portal-topline > div[style*="display:flex"] .btn { width: auto; flex: 1 1 0; }
+}
+
+/* ---- Clock widget (Dashboard) ---- */
+@media (max-width: 640px) {
+  .portal-clock-widget { width: 100%; justify-content: space-between; padding: 12px 16px; }
+  .portal-clock-seg { font-size: 1.05rem; min-width: 26px; padding: 3px 5px; }
+}
+@media (max-width: 400px) {
+  .portal-clock-widget { flex-direction: column; align-items: stretch; gap: 10px; }
+  #punch-controls { display: flex; flex-direction: column; align-items: stretch; }
+  #punch-btn { width: 100%; }
+  .portal-note#punch-hint { text-align: center !important; }
+}
+
+/* ---- Stats grids everywhere (dashboard/projects/leave/perf/team) ---- */
+@media (max-width: 480px) {
+  .portal-stats-grid { grid-template-columns: 1fr !important; gap: 10px; }
+}
+
+/* ---- Inline-styled multi-column grids need !important to beat the
+   style="" attribute: Leave's "2fr 1fr" split and Team's "1fr 1fr 1fr"
+   holidays/announcements/blackout row ---- */
+@media (max-width: 860px) {
+  .portal-stats-grid[style*="2fr"],
+  .portal-stats-grid[style*="1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+}
+
+/* ---- Tables: let every .portal-table-wrap scroll horizontally
+   instead of crushing columns unreadably ---- */
+@media (max-width: 700px) {
+  .portal-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .portal-table { min-width: 560px; }
+  .portal-table-wrap--scroll .portal-table { min-width: 620px; }
+}
+@media (max-width: 480px) {
+  .portal-table th, .portal-table td { padding: 7px 9px; font-size: .76rem; }
+}
+
+/* ---- Selects/filters that sit above tables (Attendance employee
+   picker, Overview per-user picker) — go full width on phones ---- */
+@media (max-width: 640px) {
+  #attendance-employee-select,
+  #overview-user-select,
+  .portal-team-select { max-width: none; width: 100%; }
+}
+
+/* ---- Section head rows with an action button (Prev/Today/Next,
+   Export CSV, + Add) — wrap cleanly instead of overflowing ---- */
+@media (max-width: 640px) {
+  .portal-section-head { flex-wrap: wrap; gap: 8px; }
+  .portal-section-head > div[style*="display:flex"] { flex-wrap: wrap; width: 100%; }
+  .portal-section-head > div[style*="display:flex"] .btn { flex: 1 1 auto; }
+}
+
+/* ---- Calendar (Attendance / Overview heatmap & per-user cal) ---- */
+@media (max-width: 480px) {
+  .cal-wrap { max-width: 100%; }
+  .cal-cell { font-size: .58rem; }
+  .cal-legend { font-size: .62rem; gap: 6px; }
+}
+
+/* ---- Performance toggle row (Weekly/Monthly) ---- */
+@media (max-width: 480px) {
+  .portal-toggle-row { gap: 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .portal-toggle-btn { white-space: nowrap; }
+}
+
+/* ---- Support / Leave "+ Request" / "+ Raise a query" primary
+   buttons already go full width via the topline rule above; give
+   the button itself a touch-friendly height ---- */
+@media (max-width: 480px) {
+  .portal-topline .btn { padding: 11px 18px; }
+}
+
+/* ---- Team member management panel + selects ---- */
+@media (max-width: 480px) {
+  #team-member-panel .input-box,
+  #team-member-panel select,
+  #team-member-panel textarea { width: 100%; }
+}
+
+/* ---- Modals: tighten inner spacing further on very small phones ---- */
+@media (max-width: 400px) {
+  .portal-page .premium-modal__dialog { padding: 22px 18px; }
+  .premium-modal__actions { flex-direction: column; }
+  .premium-modal__actions .btn { width: 100%; }
+}
+
+
+/* ================================================================
+   41. FESTIVE GREETING MODAL — auto-shown on login / opening the
+   portal (see portal-app.js maybeShowFestiveGreeting()). Large,
+   centered on the page over a dimmed backdrop; a floating close
+   button sits just outside the top-right corner, and our brand
+   appears as a small pill in the artwork's bottom-right corner.
+   ================================================================ */
+.festive-modal .premium-modal__dialog.festive-modal__dialog {
+  padding: 0;
+  overflow: visible; /* lets the close button float outside the rounded corner */
+  width: min(880px, calc(100% - 40px));
+  border-radius: var(--r-xl, 20px);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.festive-modal__img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--r-xl, 20px);
+  box-shadow: var(--shadow-xl);
+}
+.festive-modal__brand {
+  position: absolute;
+  right: 22px;
+  bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px 7px 8px;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  z-index: 3;
+}
+.festive-modal__brand img {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: contain;
+  display: block;
+}
+.festive-modal__brand span {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.festive-modal__close.premium-modal__close {
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  left: auto;
+  width: 40px;
+  height: 40px;
+  background: #1a1a1a;
+  color: #fff;
+  border: 3px solid #fff;
+  font-size: 1.4rem;
+  line-height: 1;
+  box-shadow: var(--shadow-lg);
+  z-index: 4;
+}
+.festive-modal__close.premium-modal__close:hover { background: #000; }
+
+@media (max-width: 640px) {
+  .festive-modal .premium-modal__dialog.festive-modal__dialog { width: calc(100% - 24px); }
+  .festive-modal__close.premium-modal__close { top: -14px; right: -10px; width: 34px; height: 34px; font-size: 1.15rem; }
+  .festive-modal__brand { right: 12px; bottom: 12px; padding: 5px 12px 5px 5px; }
+  .festive-modal__brand img { width: 20px; height: 20px; }
+  .festive-modal__brand span { font-size: .68rem; }
+}
+@media (max-width: 420px) {
+  .festive-modal__brand span { display: none; } /* keep just the logo mark on very small phones */
+  .festive-modal__brand { padding: 6px; border-radius: 50%; }
+}
+
+
+/* ================================================================
+   40. END OF STYLESHEET
+   Built on top of styles.css design tokens. Nothing in this file
+   overrides the core marketing site — everything here is scoped to
+   .portal-page (this template only) or to component classes that
+   only exist on this page's markup.
+   ================================================================ */
+
+
+/* ---------------- loading overlay (first load / sign-in / slow network) ---------------- */
+.portal-loader {
+  position: fixed; inset: 0; z-index: 10050;
+  display: grid; place-items: center;
+  background: rgba(248, 249, 252, 0.94);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  opacity: 1; visibility: visible;
+  transition: opacity .35s ease, visibility .35s ease;
+}
+.portal-loader.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.portal-loader__inner { text-align: center; padding: 24px; }
+.portal-loader__code {
+  display: flex; justify-content: center; gap: 12px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 26px; font-weight: 700; color: #0d9488;
+}
+.portal-loader__code span { animation: plHop 1.2s ease-in-out infinite; }
+.portal-loader__code span:nth-child(2) { animation-delay: .15s; color: #ea580c; }
+.portal-loader__code span:nth-child(3) { animation-delay: .30s; }
+.portal-loader__code span:nth-child(4) { animation-delay: .45s; color: #ea580c; }
+@keyframes plHop {
+  0%, 100% { transform: translateY(0); opacity: .35; }
+  40%      { transform: translateY(-12px); opacity: 1; }
+}
+.portal-loader__bar {
+  width: 180px; height: 4px; border-radius: 4px; background: #e2e8f0;
+  margin: 20px auto 0; overflow: hidden;
+}
+.portal-loader__bar u {
+  display: block; height: 100%; width: 40%;
+  background: linear-gradient(90deg, #0d9488, #ea580c);
+  animation: plSlide 1.3s ease-in-out infinite;
+}
+@keyframes plSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+.portal-loader__msg { margin-top: 18px; font-size: 13px; font-weight: 600; color: #475569; transition: color .3s; }
+.portal-loader__msg.is-slow { color: #ea580c; }
+@media (prefers-reduced-motion: reduce) {
+  .portal-loader__code span, .portal-loader__bar u { animation: none; }
+  .portal-loader__code span { opacity: 1; }
+  .portal-loader__bar u { width: 100%; }
+}
+
+
+/* ================================================================
+   THEME — Brand gradient (teal → orange, taken from the Euodoo logo)
+   Employee portal only (.portal-page). styles.css is not touched.
+   Gradient is a signature on accents, sidebar and the dashboard
+   greeting; cards, tables and forms stay flat and white.
+   ================================================================ */
+.portal-page {
+  --g: linear-gradient(135deg, #007878 0%, #00a8a8 38%, #f07818 78%, #e8491c 100%);
+  --g-soft: linear-gradient(90deg, #00a8a8, #f07818);
+  --primary: #009090;
+  --primary-light: #00a8a8;
+  --primary-dark: #006060;
+  --primary-ultra: #004848;
+  --page-bg: #f3f7f6;
+  --sidebar-bg: #0c2928;
+  --ink: #10211f;
+  --ink-soft: #4b5f5c;
+  --ink-muted: #8aa09c;
+  --border: rgba(0, 144, 144, 0.14);
+  --border-strong: rgba(0, 144, 144, 0.28);
+  --border-rule: rgba(16, 33, 31, 0.09);
+}
+body.portal-page { background: #f3f7f6; }
+
+/* spacing: no big gap under the header; five stat cards fit one row */
+.portal-page main > section.section:not(.portal-auth-section) { padding: 22px 0 56px; }
+.portal-page .portal-stats-grid { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+.portal-page .portal-shell { gap: 22px; }
+@media (min-width: 861px) { .portal-page .portal-sidebar { top: 96px; } }
+
+/* header */
+.portal-page .site-header::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--g-soft);
+}
+.portal-page .nav-cta { background: var(--g) !important; border: none; box-shadow: 0 4px 14px rgba(240, 120, 24, 0.26); }
+.portal-page .nav-cta:hover { filter: brightness(1.06); }
+
+/* sidebar */
+.portal-page .portal-sidebar {
+  background: linear-gradient(170deg, #0f3b3a 0%, #0c2928 55%, #2a1d12 130%);
+  border: none;
+}
+.portal-page .portal-sidebar::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px;
+  border-radius: 14px 14px 0 0; background: var(--g);
+}
+.portal-page .portal-nav-item { border-radius: 10px; }
+.portal-page .portal-nav-item.active { background: var(--g); color: #fff; box-shadow: 0 4px 12px rgba(0, 168, 168, 0.28); }
+.portal-page .portal-who-avatar { background: var(--g); border: 2px solid rgba(255, 255, 255, 0.35); }
+
+/* buttons & links */
+.portal-page .btn-primary { background: var(--g); border: none; color: #fff; }
+.portal-page .btn-primary:hover { filter: brightness(1.07); }
+.portal-page .portal-link-arrow, .portal-page .portal-auth-hint a { color: #007878; }
+
+/* cards: flat, with a thin gradient edge on stat cards only */
+.portal-page .portal-stat-card { border-radius: 10px; background: var(--g-soft) top / 100% 3px no-repeat, #fff; }
+
+/* dashboard greeting banner (dashboard only) */
+.portal-page #tab-dashboard > .portal-topline {
+  background: var(--g);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 8px 24px rgba(0, 120, 120, 0.2);
+}
+.portal-page #tab-dashboard > .portal-topline .portal-page-title { color: #fff; }
+.portal-page #tab-dashboard > .portal-topline .portal-page-sub { color: rgba(255, 255, 255, 0.86); }
+
+/* login / sign-up card and modals pick up the brand edge */
+.portal-page .portal-auth-card,
+.portal-page .premium-modal__dialog {
+  background-image: var(--g-soft);
+  background-size: 100% 3px;
+  background-repeat: no-repeat;
+  background-position: top;
+}
+.portal-page .premium-modal__eyebrow, .portal-page .section-tag { color: #007878; }
+
+@media (max-width: 900px) {
+  .portal-page #tab-dashboard > .portal-topline { padding: 14px 16px; }
+  .portal-page .portal-sidebar::before { display: none; }
+}
+
+
+/* ================================================================
+   TASK PORTAL ADDITIONS (not part of the Employee Portal)
+   ================================================================ */
+.portal-sidebar-footer {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.portal-who {
+  font-size: .82rem;
+  color: #a3adc9;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.portal-who-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--primary);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: .82rem; flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+
+.portal-who-avatar:hover { transform: scale(1.08) rotate(-4deg); }
+
+.portal-who-text b {
+  display: block;
+  color: #f1f2f8;
+  font-size: .88rem;
+  font-weight: 600;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+
+.portal-who-text b:hover { color: #fff; }
+
+#who-designation { color: #8b96b8 !important; }
+
+.portal-sidebar-footer .btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e6e9f4;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.portal-sidebar-footer .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+
+.portal-content { min-width: 0; }
+
+.sidebar-collapse-tab {
+  position: absolute; top: 18px; right: -11px; z-index: 5;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--surface); color: var(--ink-soft);
+  border: 1px solid var(--border-rule);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: var(--shadow-sm);
+  transition: background var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+}
+
+.sidebar-collapse-tab:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.sidebar-collapse-tab svg { transition: transform var(--dur-base) var(--ease-standard); display: block; }
+
+body.sidebar-collapsed .portal-shell { grid-template-columns: 72px 1fr; }
+
+body.sidebar-collapsed .portal-sidebar { padding: 16px 8px; }
+
+body.sidebar-collapsed .sidebar-collapse-tab svg { transform: rotate(180deg); }
+
+body.sidebar-collapsed .portal-nav-item {
+  font-size: 0; justify-content: center; gap: 0; padding: 12px 0;
+}
+
+body.sidebar-collapsed .portal-nav-item:hover { padding-left: 0; }
+
+body.sidebar-collapsed .sidebar-brand-label,
+body.sidebar-collapsed .portal-who-text { display: none; }
+
+body.sidebar-collapsed .sidebar-brand-row { justify-content: center; }
+
+body.sidebar-collapsed .portal-who { justify-content: center; }
+
+.btn-danger {
+  background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;
+}
+
+.btn-danger:hover { background: #fee2e2; border-color: #fca5a5; }
+
+body.dark-mode .btn-danger { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+
+body.dark-mode .btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
+
+.id-chip {
+  display: inline-flex; align-items: center;
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+  padding: 4px 10px; border-radius: 999px;
+  background: var(--n-bg-subtle, #f8f9fb); color: var(--ink-soft);
+  border: 1px solid var(--border-rule);
+}
+
+.id-chip.is-missing { background: #fef2f2; color: #b91c1c; border-color: #fecaca; font-family: var(--font-body); font-weight: 600; }
+
+body.dark-mode .id-chip.is-missing { background: rgba(239, 68, 68, 0.12); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+
+.portal-cell-stack { display: flex; flex-direction: column; gap: 2px; }
+
 body.dark-mode .portal-timeline-row--peach { background: rgba(226, 139, 44, 0.12); }
+
 body.dark-mode .portal-timeline-row--peach .portal-timeline-icon { background: #1c2044; color: #e8a258; }
+
 body.dark-mode .portal-timeline-row--mint { background: rgba(34, 197, 94, 0.12); }
+
 body.dark-mode .portal-timeline-row--mint .portal-timeline-icon { background: #1c2044; color: #4ade80; }
+
 body.dark-mode .portal-timeline-row--sky { background: rgba(59, 130, 246, 0.14); }
+
 body.dark-mode .portal-timeline-row--sky .portal-timeline-icon { background: #1c2044; color: #60a5fa; }
 
-/* Multi-person assignee picker (new-task forms) */
 .assignee-picker {
   display: flex; flex-wrap: wrap; gap: 6px;
   max-height: 150px; overflow-y: auto;
   padding: 8px; border: 1px solid var(--border-rule); border-radius: 10px;
   background: var(--n-bg-subtle, #f8f9fb);
 }
+
 .assignee-option {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 10px; border-radius: 999px; font-size: .8rem; font-weight: 500;
   border: 1px solid var(--border-rule); background: var(--surface); color: var(--ink-soft);
   cursor: pointer; user-select: none; transition: border-color .15s, background .15s, color .15s;
 }
+
 .assignee-option:hover { border-color: var(--border-strong); }
+
 .assignee-option:has(input:checked) { background: var(--primary); border-color: var(--primary); color: #fff; }
+
 .assignee-option input { accent-color: #fff; margin: 0; }
+
+@media (max-width: 860px) {
+  body.sidebar-collapsed .portal-shell { grid-template-columns: 1fr; }
+  .sidebar-collapse-tab { display: none; }
+}
