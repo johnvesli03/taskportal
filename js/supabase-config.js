@@ -1,12 +1,3 @@
-// ============================================================
-// MAINTENANCE MODE — set to true and push to show maintenance.html on EVERY page.
-// Set back to false and push to reopen the portal.
-// ============================================================
-const MAINTENANCE_MODE = false;
-if (MAINTENANCE_MODE && !/maintenance\.html$/.test(location.pathname)) {
-  document.documentElement.style.display = 'none';
-  location.replace('/maintenance.html');
-}
 
 // ============================================================
 // Supabase connection config

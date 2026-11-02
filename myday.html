@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Day — Euodoo Task Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/portal.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>body{padding:24px;}</style>
+</head>
+<body class="portal-page">
+<script>try{if(localStorage.getItem('euodoo-dark-mode')==='1')document.body.classList.add('dark-mode');if(localStorage.getItem('euodoo-sidebar-collapsed')==='1')document.body.classList.add('sidebar-collapsed');}catch(e){}</script>
+
+
+<div class="portal-shell">
+  <aside class="portal-sidebar">
+    <div class="sidebar-brand-row" style="display:flex;align-items:center;gap:8px;padding:10px 8px 16px;">
+      <img src="assets/logo-mark.png" alt="Euodoo" style="height:26px;" onerror="this.style.display='none'">
+      <span class="sidebar-brand-label" style="color:#f1f2f8;font-weight:700;font-size:.85rem;">Task Portal</span>
+    </div>
+    <nav>
+      <a class="portal-nav-item active" href="myday.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span> My Day</a>
+      <a class="portal-nav-item" href="dashboard.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Dashboard</a>
+      <a class="portal-nav-item" href="projects.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Projects</a>
+      <a class="portal-nav-item" href="tasks.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span> My Tasks</a>
+      <a class="portal-nav-item" href="kanban.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/></svg></span> Kanban</a>
+      <a class="portal-nav-item" href="week.html"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> My Week</a>
+      <a class="portal-nav-item" id="teamLink" href="team.html" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Team</a>
+      <a class="portal-nav-item" id="workloadLink" href="workload.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Workload</a>
+      <a class="portal-nav-item" id="ganttLink" href="gantt.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="7" y1="14" x2="13" y2="14"/></svg></span> Gantt</a>
+      <a class="portal-nav-item" id="templatesLink" href="templates.html" data-admin-only="1" style="display:none;"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></span> Templates</a>
+    </nav>
+    <div class="portal-sidebar-footer">
+      <div class="portal-who portal-clickable" onclick="openAccountModal()">
+        <div class="portal-who-avatar" id="userAvatar">--</div>
+        <div class="portal-who-text">
+          <b id="userName">Loading...</b>
+          <span id="who-designation">—</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="portal-content">
+    <div class="portal-topline">
+      <div>
+        <div class="portal-page-title" id="greet">My Day</div>
+        <div class="portal-page-sub" id="todaySub"></div>
+      </div>
+    </div>
+
+    <div id="timerArea"></div>
+    <div id="startHere"></div>
+    <div id="dayStats" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px;"></div>
+
+    <div id="sections"><p class="portal-note">Loading your day...</p></div>
+  </div>
+</div>
+
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  let currentProfile = null, runningTimer = null, tickT = null;
+  const WEIGHT = { urgent: 40, high: 25, medium: 10, low: 0 };
+  const dmy = (d) => { const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}-${m}-${y}`; };
+  const clock = (ms) => { const t = Math.max(0, Math.floor(ms / 1000)); return [Math.floor(t / 3600), Math.floor(t % 3600 / 60), t % 60].map(n => String(n).padStart(2, '0')).join(':'); };
+
+  function score(t, today) {
+    let sc = WEIGHT[t.priority] || 0;
+    if (t.due_date) {
+      const days = Math.round((new Date(t.due_date + 'T00:00:00') - today) / 86400000);
+      if (days < 0) sc += 60 + Math.min(40, -days * 4);
+      else if (days === 0) sc += 45;
+      else if (days <= 2) sc += 25;
+      else if (days <= 7) sc += 10;
+    }
+    if (t.status === 'in_progress') sc += 8;
+    return sc;
+  }
+
+  function row(t, opts) {
+    opts = opts || {};
+    const running = runningTimer && runningTimer.task_id === t.id;
+    return `<div class="portal-project-card" style="padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; ${opts.hero ? 'border:2px solid var(--primary);' : ''}">
+      <div style="flex:1; min-width:180px;">
+        <a href="task.html?id=${t.id}" style="font-weight:600; font-size:${opts.hero ? '1.02rem' : '.9rem'};">${escapeHtml(t.title)}</a>
+        <div class="portal-note" style="font-size:.76rem; margin-top:3px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          ${t.project ? escapeHtml(t.project.name) : 'Standalone'}
+          <span class="status-pill ${priorityPillClassUrgent(t.priority, t.due_date, t.status)}" style="font-size:10px;">${escapeHtml(t.priority)}</span>
+          <span class="status-pill ${statusPillClass(t.status)}" style="font-size:10px;">${statusLabel(t.status)}</span>
+          ${t.due_date ? dueDateLabel(t.due_date, t.status) : ''}
+        </div>
+      </div>
+      ${running ? '<span class="status-pill status-red" style="font-size:11px;">● Timer running</span>'
+        : `<button class="btn ${opts.hero ? 'btn-primary' : 'btn-secondary'}" style="padding:7px 14px; font-size:12.5px;" onclick="startOn('${t.id}')">${icon('clock', 13)} Start timer</button>`}
+      <a class="btn btn-secondary" style="padding:7px 12px; font-size:12.5px;" href="task.html?id=${t.id}">Open</a>
+    </div>`;
+  }
+  const section = (title, tasks, tone, hint) => tasks.length ? `<div class="portal-section">
+    <div class="portal-section-head"><h2 style="${tone ? 'color:' + tone + ';' : ''}">${title} <span class="portal-note" style="font-weight:400;">· ${tasks.length}</span></h2></div>
+    ${hint ? `<p class="portal-note" style="margin:-4px 0 8px; font-size:.78rem;">${hint}</p>` : ''}${tasks.map(t => row(t)).join('')}</div>` : '';
+
+  async function load() {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const hr = new Date().getHours();
+    document.getElementById('greet').textContent = `${hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening'}, ${currentProfile.name.split(' ')[0]}`;
+    document.getElementById('todaySub').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' — here is what to do, in order.';
+
+    const [{ data: asg }, { data: tm }, { data: logged }] = await Promise.all([
+      supabaseClient.from('task_assignees').select('task_id').eq('user_id', currentProfile.id),
+      supabaseClient.from('task_timers').select('task_id, started_at, tasks(title)').eq('user_id', currentProfile.id).maybeSingle(),
+      supabaseClient.from('time_entries').select('hours').eq('user_id', currentProfile.id).gte('created_at', today.toISOString())
+    ]);
+    runningTimer = tm || null;
+    const ids = (asg || []).map(a => a.task_id);
+    let q = supabaseClient.from('tasks').select('*, project:projects(name)').neq('status', 'done');
+    q = ids.length ? q.or(`assigned_to.eq.${currentProfile.id},id.in.(${ids.join(',')})`) : q.eq('assigned_to', currentProfile.id);
+    const { data: tasks, error } = await q;
+    if (error) { document.getElementById('sections').innerHTML = '<p class="portal-note">Could not load your tasks.</p>'; return; }
+
+    const all = (tasks || []);
+    const waiting = all.filter(t => t.status === 'review' || t.status === 'pending_approval');
+    const active = all.filter(t => !waiting.includes(t));
+    const dueN = (t) => t.due_date ? Math.round((new Date(t.due_date + 'T00:00:00') - today) / 86400000) : 9999;
+    const byScore = (a, b) => score(b, today) - score(a, today);
+    const overdue = active.filter(t => dueN(t) < 0).sort(byScore);
+    const dueToday = active.filter(t => dueN(t) === 0).sort(byScore);
+    const soon = active.filter(t => dueN(t) > 0 && dueN(t) <= 7).sort((a, b) => dueN(a) - dueN(b));
+    const ongoing = active.filter(t => dueN(t) > 7).sort(byScore);
+    const blocked = active.filter(t => t.status === 'blocked');
+
+    // timer
+    clearInterval(tickT);
+    const ta = document.getElementById('timerArea');
+    if (runningTimer) {
+      ta.innerHTML = `<div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fff7ed; border:1px solid #fdba74; border-radius:12px; padding:12px 16px; margin-bottom:16px; color:#7c2d12;">
+        <span style="width:9px; height:9px; border-radius:50%; background:#ef4444; animation:euoPop 1.2s ease-in-out infinite;"></span>
+        <b id="tClock" style="font:700 1.3rem 'JetBrains Mono',monospace;">00:00:00</b>
+        <span style="flex:1; min-width:160px;">Working on <a href="task.html?id=${runningTimer.task_id}" style="font-weight:600; text-decoration:underline;">${escapeHtml(runningTimer.tasks ? runningTimer.tasks.title : 'a task')}</a></span>
+        <button class="btn btn-danger" style="padding:8px 16px; font-size:13px;" onclick="stopNow()">Stop &amp; log</button></div>`;
+      const tick = () => { const e = document.getElementById('tClock'); if (e) e.textContent = clock(Date.now() - new Date(runningTimer.started_at).getTime()); };
+      tick(); tickT = setInterval(tick, 1000);
+    } else ta.innerHTML = '';
+
+    // start here
+    const pick = (overdue[0] || dueToday[0] || active.filter(t => t.status === 'in_progress').sort(byScore)[0] || soon[0] || ongoing[0]);
+    document.getElementById('startHere').innerHTML = pick ? `<div class="portal-section" style="margin-bottom:14px;">
+      <div class="portal-section-head"><h2>Start here</h2></div>
+      <p class="portal-note" style="margin:-4px 0 8px; font-size:.78rem;">${dueN(pick) < 0 ? 'Most overdue and important first.' : dueN(pick) === 0 ? 'Due today.' : 'Nothing is late — this is the best next task.'}</p>${row(pick, { hero: true })}</div>` : '';
+
+    const h = (logged || []).reduce((s, e) => s + Number(e.hours), 0);
+    const stat = (n, label, color) => `<div class="portal-project-card" style="padding:10px 16px; min-width:120px;"><div style="font:700 1.35rem Sora,Inter,sans-serif; ${color ? 'color:' + color : ''}">${n}</div><div class="portal-note" style="font-size:.74rem;">${label}</div></div>`;
+    document.getElementById('dayStats').innerHTML = stat(overdue.length, 'Overdue', overdue.length ? '#b91c1c' : '') + stat(dueToday.length, 'Due today') + stat(soon.length, 'Due this week') + stat((Math.round(h * 100) / 100) + 'h', 'Logged today');
+
+    const rest = (arr) => arr.filter(t => t !== pick);
+    const html = section('Overdue', rest(overdue), '#b91c1c', 'If you need more time, open the task and choose “Ask for more time”.')
+      + section('Due today', rest(dueToday), '')
+      + section('Coming up this week', rest(soon), '')
+      + section('Blocked — waiting on something', blocked.filter(t => !overdue.includes(t) && !dueToday.includes(t) && !soon.includes(t)), '#92400e')
+      + section('Ongoing, no rush', rest(ongoing).filter(t => t.status !== 'blocked'), '')
+      + section('Waiting for review', waiting, '', 'Sent to an admin for approval.');
+    document.getElementById('sections').innerHTML = html || (pick ? '' : `<div class="portal-empty-state"><h3>You are all clear</h3><p>No open tasks are assigned to you right now.</p></div>`);
+  }
+
+  async function startOn(id) {
+    const { error } = await supabaseClient.rpc('start_timer', { p_task: id });
+    if (error) { showToast('error', 'Timer not started', error.message + (/function|schema cache/i.test(error.message) ? ' (has migration-v32.sql been run?)' : '')); return; }
+    showToast('success', 'Timer started', 'Keep this page open — the timer stops if you leave it.'); await EuoTimer.refresh(); load();
+  }
+  async function stopNow() { await EuoTimer.stop(); load(); }
+  window.addEventListener('euo-timer', () => { if (currentProfile) load(); });
+
+  (async () => {
+    const auth = await requireAuth();
+    if (!auth) return;
+    currentProfile = auth.profile;
+    document.getElementById('userAvatar').textContent = initials(currentProfile.name);
+    document.getElementById('userName').textContent = currentProfile.name;
+    if (isAdmin(currentProfile)) document.getElementById('teamLink').style.display = 'flex';
+    load();
+  })();
+</script>
+</body>
+</html>
